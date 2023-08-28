@@ -24,11 +24,9 @@ import shap
 import joblib
 import glob
 
+
 ## importações de modelos
 import optuna
-import sklearn as skt
-
-
 from category_encoders import JamesSteinEncoder, WOEEncoder, CatBoostEncoder
 from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import MinMaxScaler
@@ -40,7 +38,6 @@ from xgboost import XGBClassifier
 # importação de dados
 import yfinance as yf
 
-## Bloco de Funções 
 
 def get_cached_data():
     return {}
@@ -87,6 +84,7 @@ def BaixaYahoo(df, start, end):
     df_concatenated =  merge_dataframes_by_date(dataframes)
     return df_data, dataframes, df_concatenated
 
+
 # Acha a primeira linha inteira que não contem NA
 def firstrow_notna(df):
     for index, row in df.iterrows():
@@ -101,19 +99,77 @@ def lastrow_notna(df):
             last_complete_index = index
     return last_complete_index
 
-#aplica uma meédia móvel para um intervavalo determinado 
-# Função para preencher NAs com médias na janela
-import pandas as pd
-
 # Função para preencher NAs com médias na janela
 def fill_moving_avg(df, window_size):
     for col in df.select_dtypes(include=[np.number]).columns:  # Seleciona apenas colunas numéricas
         df[col] = df[col].rolling(window=window_size, min_periods=1, center=False).mean()
 
+        
+@st.cache_data
+def puxa_dados(merged_df, start, end):
+    _, _, dfs = BaixaYahoo(merged_df, start, end)
+    dfs.columns = dfs.columns.droplevel()
+    st.write('Dados baixados:', dfs.shape)
+    st.write('Quantidade de NaN:', dfs.isna().sum().to_frame().T)
+    
+    first_index = firstrow_notna(dfs)
+    last_index = lastrow_notna(dfs)
+    first_ind = pd.to_datetime(first_index)
+    last_ind = pd.to_datetime(last_index)
+    
+    if first_index is not None and pd.to_datetime(first_ind) > pd.to_datetime(start_date):
+        st.warning(f'Data de início ótima: {first_index}', icon="⚠️")
+    
+    if last_index is not None and pd.to_datetime(last_ind) < pd.to_datetime(end_date):
+        st.warning(f'Data de término ótima: {last_index}', icon="⚠️")
+    
+    dfs.drop(dfs[(dfs.index < first_ind) | (dfs.index > last_ind)].index, inplace=True)
+    return dfs
+
+@st.cache_data
+def heavycleaning(dfs, limpeza_pesada):
+    for prefix in limpeza_pesada:
+        columns_to_drop = [col for col in dfs.columns if col.startswith(prefix)]
+        dfs.drop(columns=columns_to_drop, inplace=True)
+    st.write('Quantidade de NaN:', dfs.isna().sum().to_frame().T)
+    st.write("Tamanho após a limpeza Pesada: ", dfs.shape)
+    return dfs 
+
+def cortar_volume(dfs, corte_volume):
+    columns_to_drop = [col for col in dfs.columns if col.startswith('Volume_') and (dfs[col] == 0).sum() >= corte_volume]
+    dfs.drop(columns=columns_to_drop, inplace=True)
+    st.write('Quantidade de NaN:', dfs.isna().sum().to_frame().T)
+    st.write("Tamanho após corte de % Volumes Zerados na coluna:", dfs.shape)
+    return dfs
+
+
+def fill_moving_avg(df, window_size):
+    for col in df.select_dtypes(include=[np.number]).columns:  # Seleciona apenas colunas numéricas
+        df[col] = df[col].rolling(window=window_size, min_periods=1, center=False).mean()
+
+    st.write("Tamanho após aplicar médias móveis:", df.shape)
+    st.write(f'Média Móvel em dias: {window_size}')
+    st.write(f'Quantidade de NaN: {df.isna().sum().sum()} dados nulos')
+    st.write(df.isna().sum().to_frame().T)
+
+
 ## Configuração da página e do título
 st.set_page_config(page_title='Monografia Guilherme Ziegler', layout = 'wide', initial_sidebar_state = 'auto')
 
 st.title("Previsão do preço da soja via LSTM e seletor automatizado de modelo VARVEC por meio de aplicativo interativo")
+        
+# Importar SessionState
+class SessionState:
+    def __init__(self, **kwargs):
+        for key, val in kwargs.items():
+            setattr(self, key, val)
+
+@st.cache(allow_output_mutation=True)
+def get_session():
+    return SessionState(data=None, cleaned=False)
+
+session_state = get_session()
+
 
 ## Bloco de datas para slicer
 
@@ -452,97 +508,54 @@ start = start_date
 end = end_date
 dfs = pd.DataFrame()
 
-## Bloco para baixar os dados 
-baixar_dados = st.button("Baixar dados")
-if baixar_dados:
-    _, _, dfs = BaixaYahoo(merged_df, start, end)
-    dfs.columns = dfs.columns.droplevel()
-    st.write('Dados baixados:', dfs.shape)
-    st.write('Quantidade de NaN:', dfs.isna().sum().to_frame().T)
-    ## Corte automático de first not NA e last NA 
-    first_index = firstrow_notna(dfs)
-    last_index = lastrow_notna(dfs)
-    first_ind = pd.to_datetime(first_index)
-    last_ind = pd.to_datetime(last_index)
-    if first_index is not None and pd.to_datetime(first_ind) > pd.to_datetime(start_date):
-        st.warning(f'Data de início ótima: {first_index}', icon="⚠️")
-    else:
-        pass
-    if last_index is not None and pd.to_datetime(last_ind) < pd.to_datetime(end_date):
-        st.warning(f'Data de término ótima: {last_index}', icon="⚠️")
-    else:
-        pass
-    dfs.drop(dfs[(dfs.index < first_ind) | (dfs.index > last_ind)].index, inplace=True)
-    st.write(dfs)
-    baixar_dados == False
-    dfs = pd.DataFrame(dfs).to_parquet('dfs.parquet')
-dfs = pd.read_parquet('dfs.parquet')
-
 ## bloco de limpeza pesada para tickers
 prefixes = ['Open_', 'Close_','High_', 'Low_', 'Adj Close_', 'Volume_', 'Ticker_', 
             'Key_', 'Diff_daily_', 'Amplitude_', 'Retorno_daily_', 
             'MAX_Amplitude_Change_', 'Normal_Amplitude_Change_','Updown']
 
 limpeza_pesada = st.sidebar.multiselect('Remova colunas com a estrutura NOME_',prefixes, default=('Key_','Ticker_'))
-limpar_coluna = st.sidebar.button('Limpeza Pesada')
 
-if limpar_coluna:
-    for prefix in limpeza_pesada:
-        columns_to_drop = [col for col in dfs.columns if col.startswith(prefix)]
-        dfs.drop(columns=columns_to_drop, inplace=True)
-    st.write('Quantidade de NaN:', dfs.isna().sum().to_frame().T)
-    st.write("Tamanho após a limpeza Pesada: ", dfs.shape)
-    st.write(dfs)
-    dfs = pd.DataFrame(dfs).to_parquet('dfs.parquet')
-    limpar_coluna == False
-dfs = pd.read_parquet('dfs.parquet')
-    
+if st.button("Puxar Dados"):
+    session_state.data = puxa_dados(merged_df, start_date, end_date)
+
+if st.sidebar.button("Fazer Limpeza"):
+    if session_state.data is not None:
+        session_state.data = heavycleaning(session_state.data, limpeza_pesada)
+
+# Exibição dos resultados
+if session_state.data is not None:
+    st.write("DataFrame:")
+    st.dataframe(session_state.data)
 
 ## bloco de corte por volume por percentual de zeros
 
 corte_volume = st.sidebar.slider('Remove Volume_ para percentual de 0 na coluna', 0, 100, 100, step=1)
-cortar_volume = st.sidebar.button("Cortar Volumes")                               
-if cortar_volume:
-    columns_to_drop = [col for col in dfs.columns if col.startswith('Volume_') and (dfs[col] == 0).sum() >= corte_volume]
-    dfs.drop(columns=columns_to_drop, inplace=True)
-    st.write("Tamano após corte de % Volumes Zerados na coluna:", dfs.shape)
-    st.write('Quantidade de NaN:', dfs.isna().sum().to_frame().T)
-    st.write(dfs)
-    dfs = pd.DataFrame(dfs).to_parquet('dfs.parquet')
-    cortar_volume == False
-dfs = pd.read_parquet('dfs.parquet')
 
-## bloco de média móvel por coluna para um tempo de dias definido 
-## função fill_moving_avg checar no bloco de funções
-dias_moving_avg =  st.sidebar.slider('Dias para inputar média móvel:',1, 100, 20,step=1)
-aplicar_mv = st.sidebar.button("Aplicar Moving AVG")
+if st.sidebar.button("Cortar Volume"):
+    if session_state.data is not None:
+        cortar_volume(session_state.data, corte_volume)
 
-if aplicar_mv:
-    fill_moving_avg(dfs, dias_moving_avg)
-    st.write("Tamano após aplicar médias móveis:", dfs.shape)
-    st.write(f'Média Movel em dias: {dias_moving_avg}')
-    st.write(f' Quantidade de NaN: {dfs.isna().sum().sum()} dados nulos')
-    st.write(dfs.isna().sum().to_frame().T)
-    st.write(dfs)
-    dfs = pd.DataFrame(dfs).to_parquet('dfs.parquet')
-    aplicar_mv == False
-dfs = pd.read_parquet('dfs.parquet')
-  
-## bloco para inputar valor nos NAs restantes
-missing_data =  ['mean', 'median', 'most_frequent', 'drop']
-NA_metodo = st.sidebar.multiselect('Selecione uma forma de tratar dados faltantes',missing_data, default=('median'))
+dias_moving_avg =  st.sidebar.slider('Dias para inputar média móvel:',1, 100, 20,step=1)                     
 
-# Botão para baixar o arquivo CSV
+if st.sidebar.button("Alicar Moving Avg"):
+    if session_state.data is not None:
+            fill_moving_avg(session_state.data, dias_moving_avg)
 
-baixar_excel = st.button("Baixar excel")
+baixar_excel = st.button("Baixar Excel")
 if baixar_excel:
-    dfs_rounded = dfs.round(6)
-    excel_file = "dados.xlsx"  # Nome do arquivo Excel a ser criado
-    dfs_rounded.to_excel(excel_file, index=False, header=True)
-    st.download_button(
-        label="Clique aqui para baixar",
-        data=open(excel_file, "rb"),
-        file_name=excel_file,
-        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    )
-    baixar_excel = False
+    if session_state.data is not None:
+        dfs_rounded = session_state.data.round(6)
+        
+        # Crie uma cópia do DataFrame para manter o índice original
+        dfs_copy = dfs_rounded.copy()
+        
+        excel_file = "dados.xlsx"  # Nome do arquivo Excel a ser criado
+        with st.spinner("Criando arquivo Excel..."):
+            dfs_copy.to_excel(excel_file, index=True, header=True)
+        st.success(f"Arquivo Excel criado com sucesso! Clique no botão abaixo para baixar.")
+        st.download_button(
+            label="Baixar dados em Excel",
+            data=open(excel_file, "rb").read(),
+            file_name=excel_file,
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
