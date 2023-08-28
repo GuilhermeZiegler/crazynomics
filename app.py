@@ -27,10 +27,12 @@ import glob
 
 ## importações de modelos
 import optuna
+import scikit-learn as skt
+
 from category_encoders import JamesSteinEncoder, WOEEncoder, CatBoostEncoder
-from sklearn.impute import SimpleImputer
-from sklearn.preprocessing import MinMaxScaler
-from sklearn.linear_model import LogisticRegression
+from scikit-learn.impute import SimpleImputer
+from scikit-learn.preprocessing import MinMaxScaler
+from sscikit-learn.linear_model import LogisticRegression
 from lightgbm import LGBMClassifier
 from catboost import CatBoostClassifier
 from xgboost import XGBClassifier
