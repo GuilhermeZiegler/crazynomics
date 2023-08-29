@@ -162,7 +162,7 @@ class SessionState:
         for key, val in kwargs.items():
             setattr(self, key, val)
 
-@st.cache_data(allow_output_mutation=True)
+@st.cache(allow_output_mutation=True)
 def get_session():
     return SessionState(data=None, cleaned=False)
 
