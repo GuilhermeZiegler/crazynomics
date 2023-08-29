@@ -35,13 +35,8 @@ from catboost import CatBoostClassifier
 from xgboost import XGBClassifier
 
 # importação de dados
-import yfinance as yf
+import yfinance
 
-
-def get_cached_data():
-    return {}
-cached_data = get_cached_data()
-dfs = pd.DataFrame()
 ## Funções para a monografia
 
 def tickerget(ticker_df, start, end):
@@ -51,7 +46,7 @@ def tickerget(ticker_df, start, end):
         key = index  # Primeira coluna contendo a chave
         ticker = row[0]  # Segunda coluna contendo o ticker
 
-        dados = yf.download(ticker, start=start, end=end)
+        dados = yfinance.download(ticker, start=start, end=end)
         dados['Ticker'] = key  # Adiciona uma coluna 'Ticker' com o símbolo ou código
         dados['Key'] = key  # Adiciona uma coluna 'Key' com a chave
         df_list.append(dados)
