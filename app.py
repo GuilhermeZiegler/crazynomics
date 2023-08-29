@@ -102,28 +102,68 @@ def lastrow_notna(df):
 def fill_moving_avg(df, window_size):
     for col in df.select_dtypes(include=[np.number]).columns:  # Seleciona apenas colunas numéricas
         df[col] = df[col].rolling(window=window_size, min_periods=1, center=False).mean()
-
         
 @st.cache_data
 def puxa_dados(merged_df, start, end):
+    def tickerget(ticker_df, start, end):
+        df_list = []
+
+        for index, row in ticker_df.iterrows():
+            key = index  # Primeira coluna contendo a chave
+            ticker = row[0]  # Segunda coluna contendo o ticker
+
+            dados = yf.download(ticker, start=start, end=end)
+            dados['Ticker'] = key  # Adiciona uma coluna 'Ticker' com o símbolo ou código
+            dados['Key'] = key  # Adiciona uma coluna 'Key' com a chave
+            df_list.append(dados)
+
+        df_data = pd.concat(df_list)
+        return df_data
+
+    def split_dataframes_by_ticker(df):
+        grouped_data = df.groupby('Ticker')
+
+        dataframes = {}
+
+        for ticker, group in grouped_data:
+            new_columns = [f'{column}_{ticker}' for column in group.columns]
+            group.columns = new_columns
+            dataframes[ticker] = group.copy()
+
+        return dataframes
+
+    def merge_dataframes_by_date(dataframes_list):
+        merged_df = pd.concat(dataframes_list, axis=1)
+        merged_df.index = pd.to_datetime(merged_df.index)  # Certifique-se de que o índice seja do tipo de data
+        merged_df = merged_df[~merged_df.index.duplicated(keep='first')]  # Remova linhas duplicadas, se houver
+        return merged_df
+
+    def BaixaYahoo(df, start, end):
+        df_data = tickerget(df, start, end)
+        dataframes = split_dataframes_by_ticker(df_data)
+        df_concatenated = merge_dataframes_by_date(dataframes)
+        return df_data, dataframes, df_concatenated
+
     _, _, dfs = BaixaYahoo(merged_df, start, end)
     dfs.columns = dfs.columns.droplevel()
     st.write('Dados baixados:', dfs.shape)
     st.write('Quantidade de NaN:', dfs.isna().sum().to_frame().T)
-    
+
     first_index = firstrow_notna(dfs)
     last_index = lastrow_notna(dfs)
     first_ind = pd.to_datetime(first_index)
     last_ind = pd.to_datetime(last_index)
-    
+
     if first_index is not None and pd.to_datetime(first_ind) > pd.to_datetime(start_date):
         st.warning(f'Data de início ótima: {first_index}', icon="⚠️")
-    
+
     if last_index is not None and pd.to_datetime(last_ind) < pd.to_datetime(end_date):
         st.warning(f'Data de término ótima: {last_index}', icon="⚠️")
-    
+
     dfs.drop(dfs[(dfs.index < first_ind) | (dfs.index > last_ind)].index, inplace=True)
     return dfs
+
+
 
 @st.cache_data
 def heavycleaning(dfs, limpeza_pesada):
