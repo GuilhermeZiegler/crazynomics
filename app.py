@@ -103,6 +103,8 @@ def fill_moving_avg(df, window_size):
     for col in df.select_dtypes(include=[np.number]).columns:  # Seleciona apenas colunas numéricas
         df[col] = df[col].rolling(window=window_size, min_periods=1, center=False).mean()
 
+        
+@st.cache_data
 def puxa_dados(merged_df, start, end):
     _, _, dfs = BaixaYahoo(merged_df, start, end)
     dfs.columns = dfs.columns.droplevel()
@@ -123,6 +125,7 @@ def puxa_dados(merged_df, start, end):
     dfs.drop(dfs[(dfs.index < first_ind) | (dfs.index > last_ind)].index, inplace=True)
     return dfs
 
+@st.cache_data
 def heavycleaning(dfs, limpeza_pesada):
     for prefix in limpeza_pesada:
         columns_to_drop = [col for col in dfs.columns if col.startswith(prefix)]
@@ -502,6 +505,7 @@ merged_df = pd.concat([df_moedas, df_empresas, df_commodities, df_indices], axis
 st.markdown(merged_df.index.to_list())
 start = start_date 
 end = end_date
+dfs = pd.DataFrame()
 
 ## bloco de limpeza pesada para tickers
 prefixes = ['Open_', 'Close_','High_', 'Low_', 'Adj Close_', 'Volume_', 'Ticker_', 
