@@ -20,7 +20,6 @@ import copy
 import unidecode
 import re
 import string
-import shap
 import joblib
 import glob
 
@@ -104,7 +103,6 @@ def fill_moving_avg(df, window_size):
     for col in df.select_dtypes(include=[np.number]).columns:  # Seleciona apenas colunas numéricas
         df[col] = df[col].rolling(window=window_size, min_periods=1, center=False).mean()
 
-        
 @st.cache_data
 def puxa_dados(merged_df, start, end):
     _, _, dfs = BaixaYahoo(merged_df, start, end)
@@ -126,7 +124,7 @@ def puxa_dados(merged_df, start, end):
     dfs.drop(dfs[(dfs.index < first_ind) | (dfs.index > last_ind)].index, inplace=True)
     return dfs
 
-@st.cache_data
+@st.cache_data 
 def heavycleaning(dfs, limpeza_pesada):
     for prefix in limpeza_pesada:
         columns_to_drop = [col for col in dfs.columns if col.startswith(prefix)]
@@ -164,7 +162,7 @@ class SessionState:
         for key, val in kwargs.items():
             setattr(self, key, val)
 
-@st.cache(allow_output_mutation=True)
+@st.cache_data(allow_output_mutation=True)
 def get_session():
     return SessionState(data=None, cleaned=False)
 
