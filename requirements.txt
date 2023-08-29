@@ -1,10 +1,10 @@
-pandas==1.24
+pandas==2.0.3
 numpy==1.21.6
 seaborn== 0.12.2
 matplotlib==3.5.3
 requests==2.31.0
 unidecode==1.2.0
-shap==0.42.1
+shap==0.42.0
 joblib==1.2.0
 optuna==3.3.0
 category_encoders==2.6.2
