@@ -6,6 +6,7 @@ import pandas as pd
 import numpy as np
 import datetime as dt
 from datetime import timedelta, datetime, time
+from openpyxl import Workbook
 
 ## importação de bibliotecas de plotagem de visualziação de dados
 import seaborn as sns
