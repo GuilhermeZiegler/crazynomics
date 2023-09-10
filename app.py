@@ -16,6 +16,8 @@ import io
 import requests
 import warnings
 import copy
+import pyarrow.parquet as pq
+
 
 import unidecode
 import re
@@ -35,48 +37,13 @@ from catboost import CatBoostClassifier
 from xgboost import XGBClassifier
 
 # importação de dados
-import yfinance
+import yfinance as yf
 
+def get_cached_data():
+    return {}
+cached_data = get_cached_data()
+dfs = pd.DataFrame()
 ## Funções para a monografia
-
-def tickerget(ticker_df, start, end):
-    df_list = []
-
-    for index, row in ticker_df.iterrows():
-        key = index  # Primeira coluna contendo a chave
-        ticker = row[0]  # Segunda coluna contendo o ticker
-
-        dados = yfinance.download(ticker, start=start, end=end)
-        dados['Ticker'] = key  # Adiciona uma coluna 'Ticker' com o símbolo ou código
-        dados['Key'] = key  # Adiciona uma coluna 'Key' com a chave
-        df_list.append(dados)
-
-    df_data = pd.concat(df_list)
-    return df_data
-
-def split_dataframes_by_ticker(df):
-    grouped_data = df.groupby('Ticker')
-
-    dataframes = {}
-
-    for ticker, group in grouped_data:
-        new_columns = [f'{column}_{ticker}' for column in group.columns]
-        group.columns = new_columns
-        dataframes[ticker] = group.copy()
-
-    return dataframes
-
-def merge_dataframes_by_date(dataframes_list):
-    merged_df = pd.concat(dataframes_list, axis=1)
-    merged_df.index = pd.to_datetime(merged_df.index)  # Certifique-se de que o índice seja do tipo de data
-    merged_df = merged_df[~merged_df.index.duplicated(keep='first')]  # Remova linhas duplicadas, se houver
-    return merged_df
-
-def BaixaYahoo(df, start, end):
-    df_data = tickerget(df, start, end)
-    dataframes = split_dataframes_by_ticker(df_data)
-    df_concatenated =  merge_dataframes_by_date(dataframes)
-    return df_data, dataframes, df_concatenated
 
 
 # Acha a primeira linha inteira que não contem NA
@@ -85,6 +52,7 @@ def firstrow_notna(df):
         if row.notna().all():
             return index
     return None
+
 # Acha a ultima linha inteira que não contem NA
 def lastrow_notna(df):
     last_complete_index = None
@@ -97,69 +65,33 @@ def lastrow_notna(df):
 def fill_moving_avg(df, window_size):
     for col in df.select_dtypes(include=[np.number]).columns:  # Seleciona apenas colunas numéricas
         df[col] = df[col].rolling(window=window_size, min_periods=1, center=False).mean()
+
         
 @st.cache_data
-def puxa_dados(merged_df, start, end):
-    def tickerget(ticker_df, start, end):
-        df_list = []
+def filtra_dados(df, merged_df,start_date,end_date):
+    filtered_columns = []
 
-        for index, row in ticker_df.iterrows():
-            key = index  # Primeira coluna contendo a chave
-            ticker = row[0]  # Segunda coluna contendo o ticker
+    for prefix in merged_df.index.to_list():
+        columns_to_keep = [col for col in df.columns if col.endswith(prefix)]
+        filtered_columns.extend(columns_to_keep)
 
-            dados = yf.download(ticker, start=start, end=end)
-            dados['Ticker'] = key  # Adiciona uma coluna 'Ticker' com o símbolo ou código
-            dados['Key'] = key  # Adiciona uma coluna 'Key' com a chave
-            df_list.append(dados)
-
-        df_data = pd.concat(df_list)
-        return df_data
-
-    def split_dataframes_by_ticker(df):
-        grouped_data = df.groupby('Ticker')
-
-        dataframes = {}
-
-        for ticker, group in grouped_data:
-            new_columns = [f'{column}_{ticker}' for column in group.columns]
-            group.columns = new_columns
-            dataframes[ticker] = group.copy()
-
-        return dataframes
-
-    def merge_dataframes_by_date(dataframes_list):
-        merged_df = pd.concat(dataframes_list, axis=1)
-        merged_df.index = pd.to_datetime(merged_df.index)  # Certifique-se de que o índice seja do tipo de data
-        merged_df = merged_df[~merged_df.index.duplicated(keep='first')]  # Remova linhas duplicadas, se houver
-        return merged_df
-
-    def BaixaYahoo(df, start, end):
-        df_data = tickerget(df, start, end)
-        dataframes = split_dataframes_by_ticker(df_data)
-        df_concatenated = merge_dataframes_by_date(dataframes)
-        return df_data, dataframes, df_concatenated
-
-    _, _, dfs = BaixaYahoo(merged_df, start, end)
-    dfs.columns = dfs.columns.droplevel()
-    st.write('Dados baixados:', dfs.shape)
-    st.write('Quantidade de NaN:', dfs.isna().sum().to_frame().T)
-
+    dfs = df[filtered_columns]
     first_index = firstrow_notna(dfs)
     last_index = lastrow_notna(dfs)
     first_ind = pd.to_datetime(first_index)
     last_ind = pd.to_datetime(last_index)
-
+    
     if first_index is not None and pd.to_datetime(first_ind) > pd.to_datetime(start_date):
         st.warning(f'Data de início ótima: {first_index}', icon="⚠️")
-
+    
     if last_index is not None and pd.to_datetime(last_ind) < pd.to_datetime(end_date):
         st.warning(f'Data de término ótima: {last_index}', icon="⚠️")
-
+    
     dfs.drop(dfs[(dfs.index < first_ind) | (dfs.index > last_ind)].index, inplace=True)
+    
+    dfs.drop(dfs[(dfs.index < pd.to_datetime(start_date)) | (dfs.index > pd.to_datetime(end_date))].index, inplace=True)
     return dfs
-
-
-
+       
 @st.cache_data
 def heavycleaning(dfs, limpeza_pesada):
     for prefix in limpeza_pesada:
@@ -176,7 +108,6 @@ def cortar_volume(dfs, corte_volume):
     st.write("Tamanho após corte de % Volumes Zerados na coluna:", dfs.shape)
     return dfs
 
-
 def fill_moving_avg(df, window_size):
     for col in df.select_dtypes(include=[np.number]).columns:  # Seleciona apenas colunas numéricas
         df[col] = df[col].rolling(window=window_size, min_periods=1, center=False).mean()
@@ -185,13 +116,21 @@ def fill_moving_avg(df, window_size):
     st.write(f'Média Móvel em dias: {window_size}')
     st.write(f'Quantidade de NaN: {df.isna().sum().sum()} dados nulos')
     st.write(df.isna().sum().to_frame().T)
-
+    
+def read_parquet_file():
+    response = requests.get(link)
+    buffer = io.BytesIO(response.content)
+    df = pd.read_parquet(buffer)
+    return df
 
 ## Configuração da página e do título
 st.set_page_config(page_title='Monografia Guilherme Ziegler', layout = 'wide', initial_sidebar_state = 'auto')
 
 st.title("Previsão do preço da soja via LSTM e seletor automatizado de modelo VARVEC por meio de aplicativo interativo")
-        
+
+#link = 'https://drive.google.com/uc?id=1--gZBE88vsqMTQKIv3sdLreqWlZqmd67' 
+link = 'https://github.com/GuilhermeZiegler/crazynomics/raw/master/dados.parquet'
+
 # Importar SessionState
 class SessionState:
     def __init__(self, **kwargs):
@@ -200,18 +139,28 @@ class SessionState:
 
 @st.cache(allow_output_mutation=True)
 def get_session():
-    return SessionState(data=None, cleaned=False)
+    return SessionState(df=None, data=None, cleaned=False)
 
 session_state = get_session()
 
+if st.button('Carregue a base'):
+    session_state.df = read_parquet_file()
+    st.write('Arquivo Parquet lido com sucesso!')
 
+if session_state.df is not None:
+    st.write(session_state.df)    
+     
 ## Bloco de datas para slicer
 
 max_date = dt.datetime.today().date()
 min_date = (dt.datetime.today() - dt.timedelta(days=10 * 700)).date()
 
-default_start = '2007-07-20'
-default_end = '2023-08-22'
+try:
+    default_start = df.index.min().strftime('%Y-%m-%d')
+    default_end = df.index.max().strftime('%Y-%m-%d')
+except:
+    default_start = '2004-07-01'
+    default_end   = '2023-09-10'
 
 default_start = dt.datetime.strptime(default_start, '%Y-%m-%d').date()
 default_end = dt.datetime.strptime(default_end, '%Y-%m-%d').date()
@@ -313,7 +262,7 @@ if moedas_selecionadas:
     #st.write(df_moedas)
 else:
     st.info("Selecione pelo menos uma moeda para continuar.")
-
+    df_moedas  = pd.DataFrame()
 ## Bloco de commodities
 lista_commodities = {
                     "Brent Crude Oil Last Day Financ": "BZ=F",
@@ -361,7 +310,7 @@ if commodities_selecionadas:
         #st.write(df_commodities)
 else:
     st.info("Selecione pelo menos uma commoditie para continuar")
-
+    df_commodities = pd.DataFrame()
 ## Bloco de empresas
 empresas_mono = {
                 'MARFRIG': 'MRFG3.SA',
@@ -474,7 +423,7 @@ if empresas_selecionadas:
         #st.write(df_empresas)
 else:
     st.info("Selecione pelo menos uma empresa para continuar")
-
+    df_empresas = pd.DataFrame()
 ## Bloco de commodities
 indices_mono  = {'S&P GSCI':'GD=F', #  commodities agrícolas, incluindo soja, trigo, milho e algodão
                 'IBOVESPA': '^BVSP',
@@ -531,11 +480,17 @@ if indices_selecionados:
     #st.write(df_indices)
 else:
     st.info("Selecione pelo menos uma indice para continuar")
-
+    df_indices = pd.DataFrame()
 ## Funções para baixar os dados 
 
 ## Bloco de seleç]ao de variáveis
 st.subheader("Variáveis selecionadas:") 
+
+
+#dataframes = [df_moedas, df_empresas, df_commodities, df_indices]
+#dataframes_validos = [df for df in dataframes if df is not None]
+#merged_df = pd.concat(dataframes_validos, axis=0, ignore_index=True)
+
 merged_df = pd.concat([df_moedas, df_empresas, df_commodities, df_indices], axis=0)
 st.markdown(merged_df.index.to_list())
 start = start_date 
@@ -547,19 +502,17 @@ prefixes = ['Open_', 'Close_','High_', 'Low_', 'Adj Close_', 'Volume_', 'Ticker_
             'Key_', 'Diff_daily_', 'Amplitude_', 'Retorno_daily_', 
             'MAX_Amplitude_Change_', 'Normal_Amplitude_Change_','Updown']
 
-limpeza_pesada = st.sidebar.multiselect('Remova colunas com a estrutura NOME_',prefixes, default=('Key_','Ticker_'))
+limpeza_pesada = st.sidebar.multiselect('Remova colunas com a estrutura NOME_',prefixes)
 
-if st.button("Puxar Dados"):
-    session_state.data = puxa_dados(merged_df, start_date, end_date)
+if st.button("Filtrar Dados"):
+    if session_state.df is not None:
+        session_state.data = filtra_dados(session_state.df, merged_df,start_date,end_date)
+    else:
+        st.warning('O DataFrame df não foi carregado ainda. Por favor, clique no botão para carregar a base de dados.')
 
 if st.sidebar.button("Fazer Limpeza"):
     if session_state.data is not None:
         session_state.data = heavycleaning(session_state.data, limpeza_pesada)
-
-# Exibição dos resultados
-if session_state.data is not None:
-    st.write("DataFrame:")
-    st.dataframe(session_state.data)
 
 ## bloco de corte por volume por percentual de zeros
 
@@ -575,6 +528,12 @@ if st.sidebar.button("Alicar Moving Avg"):
     if session_state.data is not None:
             fill_moving_avg(session_state.data, dias_moving_avg)
 
+# Exibição dos resultados
+if session_state.data is not None:
+    st.write("DataFrame:")
+    st.dataframe(session_state.data)            
+
+    
 baixar_excel = st.button("Baixar Excel")
 if baixar_excel:
     if session_state.data is not None:
