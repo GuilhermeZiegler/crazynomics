@@ -126,7 +126,7 @@ def read_parquet_file():
 ## Configuração da página e do título
 st.set_page_config(page_title='Monografia Guilherme Ziegler', layout = 'wide', initial_sidebar_state = 'auto')
 
-st.title("Previsão do preço da soja via LSTM e seletor automatizado de modelo VARVEC por meio de aplicativo interativo")
+st.title("Baixador de séries temporais")
 
 #link = 'https://drive.google.com/uc?id=1--gZBE88vsqMTQKIv3sdLreqWlZqmd67' 
 link = 'https://github.com/GuilhermeZiegler/crazynomics/raw/master/dados.parquet'
