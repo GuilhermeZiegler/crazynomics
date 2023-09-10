@@ -544,11 +544,9 @@ if baixar_excel:
         
         excel_file = "dados.xlsx"  # Nome do arquivo Excel a ser criado
         with st.spinner("Criando arquivo Excel..."):
-            # Use o openpyxl para criar um Workbook e salvar o DataFrame nele
-            writer = pd.ExcelWriter(excel_file, engine='openpyxl')
-            writer.book = Workbook()
-            dfs_copy.to_excel(writer, index=True, header=True)
-            writer.save()
+            # Use o ExcelWriter do Pandas para criar o arquivo Excel
+            with pd.ExcelWriter(excel_file, engine='openpyxl') as writer:
+                dfs_copy.to_excel(writer, index=True, header=True)
         st.success(f"Arquivo Excel criado com sucesso! Clique no botão abaixo para baixar.")
         st.download_button(
             label="Baixar dados em Excel",
