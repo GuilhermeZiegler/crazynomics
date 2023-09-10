@@ -13,4 +13,6 @@ lightgbm==4.0.0
 catboost==1.2
 xgboost==1.6.2
 yfinance==0.2.4
+openpyxl==3.0.7
+
 
