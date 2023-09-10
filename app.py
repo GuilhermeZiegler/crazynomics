@@ -532,8 +532,7 @@ if st.sidebar.button("Alicar Moving Avg"):
 # Exibição dos resultados
 if session_state.data is not None:
     st.write("DataFrame:")
-    st.dataframe(session_state.data)            
-
+    st.dataframe(session_state.data)     
     
 baixar_excel = st.button("Baixar Excel")
 if baixar_excel:
@@ -545,7 +544,11 @@ if baixar_excel:
         
         excel_file = "dados.xlsx"  # Nome do arquivo Excel a ser criado
         with st.spinner("Criando arquivo Excel..."):
-            dfs_copy.to_excel(excel_file, index=True, header=True)
+            # Use o openpyxl para criar um Workbook e salvar o DataFrame nele
+            writer = pd.ExcelWriter(excel_file, engine='openpyxl')
+            writer.book = Workbook()
+            dfs_copy.to_excel(writer, index=True, header=True)
+            writer.save()
         st.success(f"Arquivo Excel criado com sucesso! Clique no botão abaixo para baixar.")
         st.download_button(
             label="Baixar dados em Excel",
@@ -553,3 +556,22 @@ if baixar_excel:
             file_name=excel_file,
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
+    
+#baixar_excel = st.button("Baixar Excel")
+#if baixar_excel:
+ #   if session_state.data is not None:
+  #      dfs_rounded = session_state.data.round(6)
+        
+        # Crie uma cópia do DataFrame para manter o índice original
+   #     dfs_copy = dfs_rounded.copy()
+        
+    #    excel_file = "dados.xlsx"  # Nome do arquivo Excel a ser criado
+     #   with st.spinner("Criando arquivo Excel..."):
+      #      dfs_copy.to_excel(excel_file, index=True, header=True)
+       # st.success(f"Arquivo Excel criado com sucesso! Clique no botão abaixo para baixar.")
+        #st.download_button(
+         #   label="Baixar dados em Excel",
+          #  data=open(excel_file, "rb").read(),
+           # file_name=excel_file,
+            #mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        #)
