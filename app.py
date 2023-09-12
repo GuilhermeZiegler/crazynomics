@@ -67,7 +67,9 @@ def fill_moving_avg(df, window_size):
     for col in df.select_dtypes(include=[np.number]).columns:  # Seleciona apenas colunas numéricas
         df[col] = df[col].rolling(window=window_size, min_periods=1, center=False).mean()
 
-        
+def chat(message, sender):
+    messages.append({"message": message, "sender":sender})
+
 @st.cache_data
 def filtra_dados(df, merged_df,start_date,end_date):
     filtered_columns = []
@@ -122,6 +124,7 @@ def read_parquet_file():
     response = requests.get(link)
     buffer = io.BytesIO(response.content)
     df = pd.read_parquet(buffer)
+    st.write('Tamanho total: ', df.shape)
     return df
 
 ## Configuração da página e do título
@@ -140,13 +143,14 @@ class SessionState:
 
 @st.cache(allow_output_mutation=True)
 def get_session():
-    return SessionState(df=None, data=None, cleaned=False)
+    return SessionState(df=None, data=None, cleaned=False, messages=None)
 
 session_state = get_session()
 
 if st.button('Carregue a base'):
     session_state.df = read_parquet_file()
-    st.write('Arquivo Parquet lido com sucesso!')
+    st.write('Base histórica lida com sucesso!')
+
 
 if session_state.df is not None:
     st.write(session_state.df)    
@@ -554,22 +558,22 @@ if baixar_excel:
             file_name=excel_file,
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
+
+st.markdown('Pix para doações: guitziegler@gmail.com')
+st.markdown('Utilize também meu VARVEC automatizado')
+        
+if "messages" not in st.session_state:
+    st.session_state.messages = []
+
+# Display chat messages from history on app rerun
+for message in st.session_state.messages:
+    with st.chat_message(message["role"]):
+        st.markdown(message["content"])
     
-#baixar_excel = st.button("Baixar Excel")
-#if baixar_excel:
- #   if session_state.data is not None:
-  #      dfs_rounded = session_state.data.round(6)
-        
-        # Crie uma cópia do DataFrame para manter o índice original
-   #     dfs_copy = dfs_rounded.copy()
-        
-    #    excel_file = "dados.xlsx"  # Nome do arquivo Excel a ser criado
-     #   with st.spinner("Criando arquivo Excel..."):
-      #      dfs_copy.to_excel(excel_file, index=True, header=True)
-       # st.success(f"Arquivo Excel criado com sucesso! Clique no botão abaixo para baixar.")
-        #st.download_button(
-         #   label="Baixar dados em Excel",
-          #  data=open(excel_file, "rb").read(),
-           # file_name=excel_file,
-            #mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        #)
+# React to user input
+if prompt := st.chat_input("Deixe uma mensagem!"):
+    # Display user message in chat message container
+    with st.chat_message("user"):
+        st.markdown(prompt)
+    # Add user message to chat history
+    st.session_state.messages.append({"role": "user", "content": prompt})
