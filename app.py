@@ -577,3 +577,4 @@ if prompt := st.chat_input("Deixe uma mensagem!"):
         st.markdown(prompt)
     # Add user message to chat history
     st.session_state.messages.append({"role": "user", "content": prompt})
+
