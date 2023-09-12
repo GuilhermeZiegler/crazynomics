@@ -13,12 +13,13 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 
 ## importação de bibliotecas de strings
+import os
 import io
 import requests
 import warnings
 import copy
 import pyarrow.parquet as pq
-
+import json
 
 import unidecode
 import re
@@ -67,9 +68,27 @@ def fill_moving_avg(df, window_size):
     for col in df.select_dtypes(include=[np.number]).columns:  # Seleciona apenas colunas numéricas
         df[col] = df[col].rolling(window=window_size, min_periods=1, center=False).mean()
 
-def chat(message, sender):
-    messages.append({"message": message, "sender":sender})
 
+MAX_MESSAGES = 50  # Limite máximo de mensagens no histórico
+HISTORY_FILE = "chat_history.json"  # Nome do arquivo de histórico
+        
+# Função para carregar o histórico do arquivo
+def load_chat_history():
+    if os.path.exists(HISTORY_FILE):
+        with open(HISTORY_FILE, "r") as file:
+            return json.load(file)
+    else:
+        return []
+    
+# Função para salvar o histórico no arquivo
+def save_chat_history(messages):
+    with open(HISTORY_FILE, "w") as file:
+        json.dump(messages, file)
+
+# Função para adicionar mensagens ao histórico
+def chat(message, sender, messages):
+    messages.append({"role": sender, "content": message})
+    
 @st.cache_data
 def filtra_dados(df, merged_df,start_date,end_date):
     filtered_columns = []
@@ -563,18 +582,24 @@ st.markdown('Pix para doações: guitziegler@gmail.com')
 st.markdown('Utilize também meu VARVEC automatizado')
         
 if "messages" not in st.session_state:
-    st.session_state.messages = []
+    st.session_state.messages = load_chat_history()
 
-# Display chat messages from history on app rerun
+# Exibe as mensagens do histórico quando o aplicativo é reiniciado
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
-    
+
 # React to user input
 if prompt := st.chat_input("Deixe uma mensagem!"):
-    # Display user message in chat message container
+    # Exibe a mensagem do usuário no container de mensagens do chat
     with st.chat_message("user"):
         st.markdown(prompt)
-    # Add user message to chat history
-    st.session_state.messages.append({"role": "user", "content": prompt})
+    # Adiciona a mensagem do usuário ao histórico usando a função chat()
+    chat(prompt, "user", st.session_state.messages)
+
+    # Mantém o histórico de chat dentro do limite máximo
+    if len(st.session_state.messages) > MAX_MESSAGES:
+        st.session_state.messages.pop(0)  # Remove a mensagem mais antiga
+    # Salva o histórico no arquivo
+    save_chat_history(st.session_state.messages)
 
