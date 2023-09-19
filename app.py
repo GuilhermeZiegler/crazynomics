@@ -87,7 +87,7 @@ def chat(message, sender, messages):
     messages.append({"role": sender, "content": message})
     
 @st.cache_data
-def filtra_dados(df, st.write(Variaveis_df,start_date,end_date):
+def filtra_dados(df, merged_df,start_date,end_date):
     filtered_columns = []
 
     for prefix in st.write(Variaveis_df.index.to_list():
