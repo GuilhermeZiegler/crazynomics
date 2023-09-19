@@ -236,6 +236,8 @@ st.title("Baixador de séries temporais")
 #link = 'https://drive.google.com/uc?id=1--gZBE88vsqMTQKIv3sdLreqWlZqmd67' 
 link = 'https://github.com/GuilhermeZiegler/crazynomics/raw/master/dados.parquet'
 
+st.subheader('Download da base histórica', divider='rainbow')
+
 # Importar SessionState
 class SessionState:
     def __init__(self, **kwargs):
