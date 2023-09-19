@@ -252,7 +252,6 @@ if st.button('Carregue a base'):
     session_state.df = read_parquet_file()
     st.write('Base histórica lida com sucesso!')
 
-
 if session_state.df is not None:
     st.write(session_state.df)    
      
@@ -268,10 +267,8 @@ except:
     default_start = '2004-07-01'
     default_end   = dt.datetime.today().date().strftime('%Y-%m-%d')
 
-	
 dt1, dt2 =st.columns(2)	
 	
-
 default_start = dt.datetime.strptime(default_start, '%Y-%m-%d').date()
 default_end = dt.datetime.strptime(default_end, '%Y-%m-%d').date()
 
@@ -284,7 +281,6 @@ start_date = selected_start
 end_date = selected_end  
 
 st.write(f"Dados para o range de datas selecionado: {start_date} até {end_date}")
-
 
 coins, comm, assets, idx   = st.columns(4)
 
@@ -610,8 +606,6 @@ start = start_date
 end = end_date
 dfs = pd.DataFrame()
 
-
-    
 lista_variaveis= {
         'Resultado_diario': ('Close', 'Open'),
         'Amplitude': ('High', 'Low'),
@@ -625,11 +619,9 @@ lista_variaveis= {
 variaveis_keys = list(lista_variaveis.keys())
 variaveis_selecionadas = st.sidebar.multiselect("Adicione Variáveis", variaveis_keys)
 
-
 if st.sidebar.button("Criar Variáveis"):
     if session_state.data is not None:
         session_state.data = criar_variaveis(session_state.data, variaveis_selecionadas)
-
 
 ## bloco de limpeza pesada para tickers
 prefixes = ['Open_', 'Close_','High_', 'Low_', 'Adj Close_', 'Volume_', 'Ticker_', 
@@ -663,8 +655,8 @@ if st.sidebar.button("Alicar Moving Avg"):
 # Exibição dos resultados
 if session_state.data is not None:
     st.write("DataFrame:")
-    st.dataframe(session_state.data)     
-	
+    st.dataframe(session_state.data)
+    candles_tickers = get_candle(session_state.data, [lista_indices, lista_empresas, moedas, lista_commodities])  
 	
 baixar_excel = st.button("Baixar Excel")
 if baixar_excel:
@@ -686,7 +678,9 @@ if baixar_excel:
             file_name=excel_file,
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
-	
+
+st.subheader('Visualização Gráfica', divider='rainbow'
+
 g1, g2 = st.columns(2)
 
 with g1:
@@ -704,36 +698,13 @@ if grafico_linhas:
 				st.plotly_chart(fig)
 with g2:
 	grafico_candles = st.button("Gráfico candlestick")
-	selected_suffixes = st.multiselect("Selecione os sufixos:", get_candle(session_state.data, [lista_indices, lista_empresas, moedas, lista_commodities]))
+	candles_tickers = get_candle(session_state.data, [lista_indices, lista_empresas, moedas, lista_commodities])
+	selected_suffixes = st.multiselect("Selecione os sufixos:", candles_tickers)
 if grafico_candles and selected_suffixes:
     # Cria o gráfico de candlestick com base nos sufixos selecionados
 	candle= candlestick_chart(session_state.data, selected_suffixes)
 	st.plotly_chart(candle)	
-		
-
-
-
-		
-		
-		
-		
-		
-		
-		
-		
-		
-		
-		
-		
-		
-		
-		
-		
-		
-		
-		
-		
-		
+			
 st.markdown('Pix para doações: guitziegler@gmail.com')
 st.markdown('Utilize também meu VARVEC automatizado')
 
