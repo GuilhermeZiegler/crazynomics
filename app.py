@@ -236,7 +236,7 @@ st.title("Baixador de séries temporais")
 #link = 'https://drive.google.com/uc?id=1--gZBE88vsqMTQKIv3sdLreqWlZqmd67' 
 link = 'https://github.com/GuilhermeZiegler/crazynomics/raw/master/dados.parquet'
 
-st.subheader('Download da base histórica', divider='rainbow')
+st.subheader('Download da base histórica', help='Você deve clicar no botão carregue a base para que o arquivo parquet seja lido',divider='rainbow')
 
 # Importar SessionState
 class SessionState:
@@ -681,7 +681,7 @@ if baixar_excel:
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
 
-st.subheader('Visualização Gráfica', divider='rainbow')
+st.subheader('Visualização Gráfica', help="Selecione um filtro de dados e clique na visualização gráfica disponível", divider='rainbow')
 
 g1, g2 = st.columns(2)
 	     	     
