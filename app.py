@@ -634,7 +634,7 @@ limpeza_pesada = st.sidebar.multiselect('Remova colunas com a estrutura NOME_',p
 
 if st.button("Filtrar Dados"):
     if session_state.df is not None:
-        session_state.data = filtra_dados(session_state.df, st.write(Variaveis_df,start_date,end_date)
+        session_state.data = filtra_dados(session_state.df, merged_df,start_date,end_date)
     else:
         st.warning('O DataFrame df não foi carregado ainda. Por favor, clique no botão para carregar a base de dados.')
 
