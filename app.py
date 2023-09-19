@@ -90,7 +90,7 @@ def chat(message, sender, messages):
 def filtra_dados(df, merged_df,start_date,end_date):
     filtered_columns = []
 
-    for prefix in st.write(Variaveis_df.index.to_list():
+    for prefix in merged_df.index.to_list():
         columns_to_keep = [col for col in df.columns if col.endswith(prefix)]
         filtered_columns.extend(columns_to_keep)
 
