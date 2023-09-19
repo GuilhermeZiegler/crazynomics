@@ -11,6 +11,9 @@ from openpyxl import Workbook
 ## importação de bibliotecas de plotagem de visualziação de dados
 import seaborn as sns
 import matplotlib.pyplot as plt
+import plotly.express as px
+import plotly.graph_objs as go
+
 
 ## importação de bibliotecas de strings
 import os
@@ -186,6 +189,45 @@ def criar_variaveis(dfs, variaveis_selecionadas):
                         dfs[f'Updown_{sufixo}'] = (dfs[f'Retorno_diario_{sufixo}'] > 0).astype(int)						
     return dfs
 
+
+def get_candle(dfs, list_of_dictionaries):
+    processed_columns = set()  # Usamos um conjunto para garantir que cada sufixo seja mantido apenas uma vez
+    for col in dfs.columns:
+        suffix = col.split('_')[-1]
+        for dictionary in list_of_dictionaries:
+            if suffix in dictionary:
+                processed_columns.add(suffix)
+                break
+    return list(processed_columns)
+
+def candlestick_chart(dfs, selected_suffixes):
+    traces = []
+    for suffix in selected_suffixes:
+        open_col = f"Open_{suffix}"
+        high_col = f"High_{suffix}"
+        low_col = f"Low_{suffix}"
+        close_col = f"Close_{suffix}"
+
+        trace = go.Candlestick(
+            x=dfs.index,
+            open=dfs[open_col],
+            high=dfs[high_col],
+            low=dfs[low_col],
+            close=dfs[close_col],
+            name=suffix
+        )
+
+        traces.append(trace)
+
+    layout = go.Layout(
+        title="Gráfico de Candlestick",
+        xaxis=dict(title="Data"),
+        yaxis=dict(title="Preço"),
+    )
+
+    fig = go.Figure(data=traces, layout=layout)
+    return fig
+
 ## Configuração da página e do título
 st.set_page_config(page_title='Monografia Guilherme Ziegler', layout = 'wide', initial_sidebar_state = 'auto')
 
@@ -224,14 +266,23 @@ try:
     default_end = df.index.max().strftime('%Y-%m-%d')
 except:
     default_start = '2004-07-01'
-    default_end   = '2023-09-10'
+    default_end   = dt.datetime.today().date().strftime('%Y-%m-%d')
+
+	
+dt1, dt2 =st.columns(2)	
+	
 
 default_start = dt.datetime.strptime(default_start, '%Y-%m-%d').date()
 default_end = dt.datetime.strptime(default_end, '%Y-%m-%d').date()
 
-selected_range = st.slider("Selecione o intervalo de datas", min_date, max_date, (default_start, default_end))
-start_date = selected_range[0]
-end_date = selected_range[1]
+with dt1:
+	selected_start = st.date_input("Data Início:", min_value=default_start, max_value=default_end, value=default_start)
+with dt2:	
+	selected_end = st.date_input("Data Fim:", min_value=default_start, max_value=default_end,value=default_end)
+	
+start_date = selected_start
+end_date = selected_end  
+
 st.write(f"Dados para o range de datas selecionado: {start_date} até {end_date}")
 
 
@@ -532,7 +583,6 @@ with idx:
 					'KOSPI Composite Index': '^KS11',
 					'TSEC weighted index': '^TWII',
 					'TA-125': '^TA125.TA',
-					'EGX 30 Price Return Index': '^CASE30',
 					'Top 40 USD Net TRI Index': '^JN0U.JO',
 					'NIFTY 50': '^NSEI'
 					}
@@ -552,6 +602,7 @@ with idx:
 
 ## Bloco de seleç]ao de variáveis
 st.subheader("Variáveis selecionadas:") 
+
 
 merged_df = pd.concat([df_moedas, df_empresas, df_commodities, df_indices], axis=0)
 st.markdown(merged_df.index.to_list())
@@ -585,7 +636,6 @@ prefixes = ['Open_', 'Close_','High_', 'Low_', 'Adj Close_', 'Volume_', 'Ticker_
             'Key_', 'Resultado_diario_', 'Amplitude_', 'Retorno_diario_', 
             'Maxima_variacao_amplitude_', 'Variacao_amplitude_diaria_','Updown_']
 
-
 limpeza_pesada = st.sidebar.multiselect('Remova colunas com a estrutura NOME_',prefixes)
 
 if st.button("Filtrar Dados"):
@@ -608,15 +658,14 @@ dias_moving_avg =  st.sidebar.number_input('Dias para inputar média móvel:',1,
 
 if st.sidebar.button("Alicar Moving Avg"):
     if session_state.data is not None:
-            fill_moving_avg(session_state.data, dias_moving_avg)
-
-            
+            fill_moving_avg(session_state.data, dias_moving_avg)          
             
 # Exibição dos resultados
 if session_state.data is not None:
     st.write("DataFrame:")
     st.dataframe(session_state.data)     
-    
+	
+	
 baixar_excel = st.button("Baixar Excel")
 if baixar_excel:
     if session_state.data is not None:
@@ -637,10 +686,57 @@ if baixar_excel:
             file_name=excel_file,
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
+	
+g1, g2 = st.columns(2)
 
+with g1:
+	grafico_linhas = st.button("Gráfico Linhas")
+	selected_columns = st.multiselect("Gráfico:", session_state.data.columns)
+if grafico_linhas:
+	if session_state.data is not None:
+		if not selected_columns:
+			st.warning("Selecione alguma coluna")
+		else:
+				# Crie o gráfico usando Plotly Express
+			fig = px.line(session_state.data, x=session_state.data.index, y=selected_columns)
+			with st.container():
+					# Exiba o gráfico dentro do container
+				st.plotly_chart(fig)
+with g2:
+	grafico_candles = st.button("Gráfico candlestick")
+	selected_suffixes = st.multiselect("Selecione os sufixos:", get_candle(session_state.data, [lista_indices, lista_empresas, moedas, lista_commodities]))
+if grafico_candles and selected_suffixes:
+    # Cria o gráfico de candlestick com base nos sufixos selecionados
+	candle= candlestick_chart(session_state.data, selected_suffixes)
+	st.plotly_chart(candle)	
+		
+
+
+
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
 st.markdown('Pix para doações: guitziegler@gmail.com')
 st.markdown('Utilize também meu VARVEC automatizado')
-        
+
 if "messages" not in st.session_state:
     st.session_state.messages = load_chat_history()
 
@@ -662,3 +758,6 @@ if prompt := st.chat_input("Deixe uma mensagem!"):
         st.session_state.messages.pop(0)  # Remove a mensagem mais antiga
     # Salva o histórico no arquivo
     save_chat_history(st.session_state.messages)
+
+
+
