@@ -679,12 +679,10 @@ if baixar_excel:
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
 
-st.subheader('Visualização Gráfica', divider='rainbow'
+st.subheader('Visualização Gráfica', divider='rainbow')
 
-	     
 g1, g2 = st.columns(2)
-
-	     
+	     	     
 with g1:
 	grafico_linhas = st.button("Gráfico Linhas")
 	selected_columns = st.multiselect("Gráfico:", session_state.data.columns)
