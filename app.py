@@ -602,7 +602,7 @@ with idx:
 st.subheader("Variáveis selecionadas:", help = "Variáveis que você escolhe para filtrar em moedas, commodities, ativos e índices. Você pode remover, criar, modificar variáveis à esquerda", divider ="rainbow") 
 
 
-st.write(Variaveis_df = pd.concat([df_moedas, df_empresas, df_commodities, df_indices], axis=0)
+merged_df = pd.concat([df_moedas, df_empresas, df_commodities, df_indices], axis=0)
 st.markdown(merged_df.index.to_list())
 start = start_date 
 end = end_date
