@@ -520,12 +520,9 @@ def get_session():
 session_state = get_session()
 
 if st.button('Carregue a base'):
-    session_state.df = read_parquet_file()
+    session_state.data = read_parquet_file()
     st.write('Base histórica lida com sucesso!')
 
-if session_state.df is not None:
-    st.write(session_state.df)    
-     
 ## Bloco de datas para slicer
 
 max_date = dt.datetime.today().date()
