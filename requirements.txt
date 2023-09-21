@@ -15,5 +15,5 @@ xgboost==1.6.2
 yfinance==0.2.4
 openpyxl==3.0.7
 plotly==5.17.0
-
+statsmodels==0.14.0
 
