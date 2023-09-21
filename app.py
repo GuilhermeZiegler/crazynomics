@@ -40,6 +40,8 @@ from sklearn.linear_model import LogisticRegression
 from lightgbm import LGBMClassifier
 from catboost import CatBoostClassifier
 from xgboost import XGBClassifier
+from statsmodels.tsa.stattools import adfuller
+from statsmodels.tsa.vector_ar.vecm import coint_johansen
 
 # importação de dados
 import yfinance as yf
@@ -119,6 +121,16 @@ def heavycleaning(dfs, limpeza_pesada):
     st.write('Quantidade de NaN:', dfs.isna().sum().to_frame().T)
     st.write("Tamanho após a limpeza Pesada: ", dfs.shape)
     return dfs 
+
+@st.cache_data
+def guardar_coluna(dfs, colunas_keep):
+    columns_to_keep = [col for col in dfs.columns if col in colunas_keep]
+    dfs = dfs[columns_to_keep]
+    dfs.columns = columns_to_keep  # Atualiza as colunas no DataFrame original
+    st.write('Quantidade de NaN:', dfs.isna().sum().to_frame().T)
+    st.write("Tamanho após o processamento ", dfs.shape)
+    return dfs
+
 
 def cortar_volume(dfs, corte_volume):
     columns_to_drop = [col for col in dfs.columns if col.startswith('Volume_') and (dfs[col] == 0).sum() >= corte_volume]
@@ -227,6 +239,263 @@ def candlestick_chart(dfs, selected_suffixes):
 
     fig = go.Figure(data=traces, layout=layout)
     return fig
+
+
+def make_stationary(df, N_MAX):
+    VARVEC_diff = df.copy()
+    df_resultante = pd.DataFrame(index=VARVEC_diff.columns)
+    estacionarias_set = set()
+
+    for i in range(N_MAX):
+        if i == 0:
+            pass
+        else:
+            VARVEC_diff = VARVEC_diff[nao_estacionarias].diff()
+            VARVEC_diff.dropna(inplace=True)
+
+        _, estacionarias, nao_estacionarias = adfuller_trintinalia(VARVEC_diff)
+        estacionarias_set.update(estacionarias)
+
+        for col in VARVEC_diff.columns:
+            if col in estacionarias_set:
+                if f'estacionarias_{i}' not in df_resultante.columns:
+                    df_resultante[f'estacionarias_{i}'] = ''
+                if df_resultante.loc[col, f'estacionarias_{i}'] != 'S':
+                    df_resultante.loc[col, f'estacionarias_{i}'] = 'S'
+            
+        if len(nao_estacionarias) == 0:
+            st.write(f"Todas as variáveis se tornaram estacionárias após {i} diferenciações.")
+            break
+        elif i == N_MAX - 1:
+            st.write(f"Atingido o número máximo de iterações ({N_MAX}) e algumas variáveis ainda não são estacionárias.")
+            
+    st.write(df_resultante)
+
+def adfuller_trintinalia(VARVEC, nivel_critico=5):
+    result_df = pd.DataFrame(columns=['Variável', 'ADF Statistic', 'p-value', 'Nc_1%', 'Nc_5%', 'Nc_10%', 'ResNc_1%', 'ResNc_5%', 'ResNc_10%'])
+    estacionarias = []
+    nao_estacionarias = []
+
+    for col in VARVEC.columns:
+        result = adfuller(VARVEC[col].values)
+        adf_statistic = result[0]
+        p_value = result[1]
+        critical_values = result[4]
+        res_nc = adf_statistic < critical_values[f'{nivel_critico}%']
+
+        row = {
+            'Variável': col,
+            'ADF Statistic': adf_statistic,
+            'p-value': p_value,
+            'Nc_1%': critical_values['1%'],
+            'Nc_5%': critical_values['5%'],
+            'Nc_10%': critical_values['10%'],
+            'ResNc_1%': 'ESTACIONARIO' if adf_statistic < critical_values['1%'] else 'NAO ESTACIONARIO',
+            'ResNc_5%': 'ESTACIONARIO' if res_nc else 'NAO ESTACIONARIO',
+            'ResNc_10%': 'ESTACIONARIO' if adf_statistic < critical_values['10%'] else 'NAO ESTACIONARIO'
+        }
+
+        result_df = pd.concat([result_df, pd.DataFrame(row, index=[0])], ignore_index=True)
+
+        if res_nc:
+            estacionarias.append(col)
+        else:
+            nao_estacionarias.append(col)
+
+    if nivel_critico == 1:
+        nao_estacionarias = estacionarias.copy()
+    
+    
+    result_df = pd.DataFrame(result_df)
+    estacionarias_df = pd.DataFrame({'Variáveis Estacionárias': estacionarias})
+    nao_estacionarias_df = pd.DataFrame({'Variáveis Não Estacionárias': nao_estacionarias})
+    
+    return result_df, estacionarias, nao_estacionarias
+
+def stationary_window_adf_multi_columns(dataframe, window_size, approach, offset_type='M'):
+    results = {}
+    max_index = dataframe.index.max()
+    min_index = dataframe.index.min()
+    offset_mapping = {
+       'D': 'days',
+        'BD': 'weekday',
+        'W': 'weeks',
+        'M': 'months',
+        'Y': 'years',
+        'MIN': 'minutes',
+        'H': 'hours',
+        'S': 'seconds',
+        'MS': 'microseconds',
+        'MS_START': 'months=window_size, day=1',
+        'MS_END': 'months=window_size, day=1'
+    }
+    
+    if offset_type not in offset_mapping:
+        supported_options = ', '.join(offset_mapping.keys())
+        raise ValueError(f"The offset_type parameter must be one of the supported options: {supported_options}")
+    else:
+        if offset_type in ['MS_START', 'MS_END']:
+            offset_value = offset_mapping[offset_type].replace('window_size', str(window_size))
+            offset = pd.DateOffset(eval(offset_value))
+        else:
+            offset = pd.DateOffset(**{offset_mapping[offset_type]: window_size})
+    
+    for column in dataframe.columns:
+        df = dataframe[column]
+        data_inicio = min_index
+        data_fim = data_inicio + offset
+        column_results = []
+        
+        if approach == 'constant':
+            while data_fim <= max_index:
+                df_slice = df.loc[data_inicio:data_fim]
+                result = adfuller(df_slice)
+                p_value = result[1]
+                is_stationary = p_value <= 0.05
+                column_results.append((data_inicio, data_fim, p_value, is_stationary, "constant"))
+                data_inicio = data_fim
+                data_fim += offset
+        elif approach == 'forward':
+            while data_fim <= max_index:
+                df_slice = df.loc[data_inicio:data_fim]
+                result = adfuller(df_slice)
+                p_value = result[1]
+                is_stationary = p_value <= 0.05
+                column_results.append((data_inicio, data_fim, p_value, is_stationary, approach))
+                data_fim += offset
+        elif approach == 'back':
+            data_fim = max_index
+            data_inicio = data_fim - offset
+            while data_inicio >= min_index:
+                df_slice = df.loc[data_inicio:data_fim]
+                result = adfuller(df_slice)
+                p_value = result[1]
+                is_stationary = p_value <= 0.05
+                column_results.append((data_inicio, data_fim, p_value, is_stationary, approach))
+                data_inicio -= offset
+
+        results[column] = pd.DataFrame(column_results, columns=['Start Date', 'End Date', 'p-value', 'Is Stationary', 'Approach'])
+
+        
+    return results
+
+def johansen_cointegration_test(df, variavel_y, variaveis_coint, det_order=-1, k_ar_diff=0, nc="5%"):
+    if nc == "1%":
+        col = 0
+    elif nc == "5%":
+        col = 1
+    elif nc == "10%":
+        col = 2
+    else:
+        raise ValueError("NC = 1%, 10% OU 5%")
+
+    resultado = {}
+    data_inicio = df.index.min()
+    data_fim = df.index.max()
+    variavel_interesse = df[variavel_y]
+    df_outras_variaveis = df[variaveis_coint]
+    variaveis_cointegradas = ', '.join(variaveis_coint)
+    series_list = {"Variável de Interesse": variavel_interesse}
+
+    for col_name in variaveis_coint:
+        series_list[col_name] = df_outras_variaveis[col_name]
+
+    data = pd.DataFrame(series_list)
+    result = coint_johansen(data, det_order=det_order, k_ar_diff=k_ar_diff)
+    autovalores = result.eig
+    trace_statistics = result.lr1
+    eigen_value_statistics = result.lr2
+    critical_values_trace = result.cvt
+    critical_maximum_eigenvalue_statistic = result.cvm
+    ranking_trace = 0
+    cointegra_trace = 0
+    cointegra_eigenvalue = 0
+    ranking_eigenvalue = 0
+    size = len(trace_statistics)
+
+    for i in range(0, size):
+        if trace_statistics[i] >= critical_values_trace[i][col]:
+            cointegra_trace = 1
+            ranking_trace += 1
+        if eigen_value_statistics[i] >= critical_maximum_eigenvalue_statistic[i][col]:
+            cointegra_eigenvalue = 1
+            ranking_eigenvalue += 1
+
+    resultado = {
+        "Data_Inicio": data_inicio,
+        "Data_Fim": data_fim,
+        "Variável de Interesse": variavel_interesse.name,
+        "Variáveis Coint": variaveis_cointegradas,
+        "Cointegração (Trace)": cointegra_trace,
+        "Ranking (Trace)": ranking_trace,
+        "Cointegração (Max Eigenvalue)": cointegra_eigenvalue,
+        "Ranking (Max Eigenvalue)": ranking_eigenvalue,
+        "Autovalores": autovalores  # Inclui os autovalores nos resultados
+    }
+
+    resultado_df = pd.DataFrame([resultado])  # Crie um DataFrame a partir do dicionário resultado
+    return resultado_df
+
+
+
+
+def coint_window(df, offset_type, window_size, approach, variavel_y, variaveis_coint, maxlag, det_order=-1, k_ar_diff=0, nc="5%"):
+    result = []
+    max_index = df.index.max()
+    min_index = df.index.min()
+    offset_mapping = {
+        'D': 'days',
+        'BD': 'weekday',
+        'W': 'weeks',
+        'M': 'months',
+        'Y': 'years',
+        'MIN': 'minutes',
+        'H': 'hours',
+        'S': 'seconds',
+        'MS': 'microseconds',
+        'MS_START': 'months=window_size, day=1',
+        'MS_END': 'months=window_size, day=1'
+    }
+    
+    if offset_type not in offset_mapping:
+        supported_options = ', '.join(offset_mapping.keys())
+        raise ValueError(f"The offset_type parameter must be one of the supported options: {supported_options}")
+    else:
+        if offset_type in ['MS_START', 'MS_END']:
+            offset_value = offset_mapping[offset_type].replace('window_size', str(window_size))
+            offset = pd.DateOffset(eval(offset_value))
+        else:
+            offset = pd.DateOffset(**{offset_mapping[offset_type]: window_size})
+    
+    data_inicio = min_index
+    data_fim = data_inicio + offset
+
+    if approach == 'constant':
+        while data_fim <= max_index:
+            df_slice = df.loc[data_inicio:data_fim]   
+            slice_result = johansen_cointegration_test(df_slice, variavel_y, variaveis_coint,det_order, k_ar_diff)
+            result.append(slice_result)
+            data_inicio = data_fim
+            data_fim += offset
+    elif approach == 'forward':
+        while data_fim <= max_index:
+            df_slice = df.loc[data_inicio:data_fim]
+            slice_result = johansen_cointegration_test(df_slice, variavel_y, variaveis_coint, det_order, k_ar_diff)
+            result.append(slice_result)
+            data_fim += offset
+    elif approach == 'back':
+        data_fim = max_index
+        data_inicio = data_fim - offset
+        while data_inicio >= min_index:
+            df_slice = df.loc[data_inicio:data_fim]
+            slice_result = johansen_cointegration_test(df_slice, variavel_y, variaveis_coint,det_order, k_ar_diff)
+            result.append(slice_result)
+            data_inicio -= offset
+			
+    combined_result = pd.concat(result, ignore_index=True)
+    
+    return combined_result
+		
 
 ## Configuração da página e do título
 st.set_page_config(page_title='Monografia Guilherme Ziegler', layout = 'wide', initial_sidebar_state = 'auto')
@@ -630,17 +899,27 @@ prefixes = ['Open_', 'Close_','High_', 'Low_', 'Adj Close_', 'Volume_', 'Ticker_
             'Key_', 'Resultado_diario_', 'Amplitude_', 'Retorno_diario_', 
             'Maxima_variacao_amplitude_', 'Variacao_amplitude_diaria_','Updown_']
 
-limpeza_pesada = st.sidebar.multiselect('Remova colunas com a estrutura NOME_',prefixes)
 
+limpeza_pesada = st.sidebar.multiselect('Remova colunas TIPO_',prefixes)
+if st.sidebar.button("Remover Colunas"):
+	if session_state.data is not None:
+		session_state.data = heavycleaning(session_state.data, limpeza_pesada)
+try:
+	colunas = session_state.data.columns	
+except: 
+	colunas = "Carregue os dados"
+	
+colunas_keep = st.sidebar.multiselect('Selecione Colunas:', colunas)
+manter_colunas = st.sidebar.button("Manter Colunas")
+if manter_colunas:
+	if session_state.data is not None:
+		session_state.data = guardar_coluna(session_state.data,colunas_keep)
+	
 if st.button("Filtrar Dados"):
     if session_state.df is not None:
         session_state.data = filtra_dados(session_state.df, merged_df,start_date,end_date)
     else:
         st.warning('O DataFrame df não foi carregado ainda. Por favor, clique no botão para carregar a base de dados.')
-
-if st.sidebar.button("Fazer Limpeza"):
-    if session_state.data is not None:
-        session_state.data = heavycleaning(session_state.data, limpeza_pesada)
 
 ## bloco de corte por volume por percentual de zeros
 #corte_volume = st.sidebar.slider('Remove Volume_ para percentual de 0 na coluna', 0, 100, 100, step=1)
@@ -661,6 +940,7 @@ if session_state.data is not None:
     candles_tickers = get_candle(session_state.data, [lista_indices, lista_empresas, moedas, lista_commodities])  
 	
 baixar_excel = st.button("Baixar Excel")
+st.markdown('Pix para doações: guitziegler@gmail.com')
 if baixar_excel:
     if session_state.data is not None:
         dfs_rounded = session_state.data.round(6)
@@ -707,8 +987,71 @@ if grafico_candles and selected_suffixes:
 	candle= candlestick_chart(session_state.data, selected_suffixes)
 	st.plotly_chart(candle)	
 			
-st.markdown('Pix para doações: guitziegler@gmail.com')
-st.markdown('Utilize também meu VARVEC automatizado')
+st.subheader('Modelos de Séries Temporais', help="Você poderá verificar estacionariedade das variáveis escolhidas e aplicar SARIMA, VAR e VEC", divider='rainbow')
+
+p1, p2 = st.columns(2)
+with p1:
+	max_lags =  st.number_input('Lags:',1, 20, 3,step=1)   
+	when_stationary = st.button("Make Stationary")
+
+	if when_stationary:
+		if session_state.data is not None:
+			try:
+				make_stationary(session_state.data, max_lags)
+			except Exception as e:
+				st.warning(f"Erro ao processar os dados: {str(e)}. Processo seus dados, remova NaN")
+		else:
+			st.warning("O dataframe não está disponível. Favor carregar dados primeiro.")
+
+with p2:
+
+	offset_mapping = {
+			'D': 'days',
+			'BD': 'weekday',
+			'W': 'weeks',
+			'M': 'months',
+			'Y': 'years',
+			'MIN': 'minutes',
+			'H': 'hours',
+			'S': 'seconds',
+			'MS': 'microseconds',
+			'MS_START': 'months=window_size, day=1',
+			'MS_END': 'months=window_size, day=1'
+		}
+
+	freqs = list(offset_mapping.keys())
+	freq = st.selectbox("Freq", freqs)
+	window_size = st.number_input('Window Size:',1, 1000, 1,step=1) 
+	approach =  st.radio("Selecione uma opção:", ["constant", "forward", "back"])
+	stationary_window = st.button("Stationary window")
+	if stationary_window:
+		if session_state.data is not None:
+			results = stationary_window_adf_multi_columns(session_state.data, window_size,approach,offset_type=freq)
+			for column_name, result_df in results.items():
+				st.write(result_df)
+
+			
+st.subheader('Verificador de  Coinregração', help="Testar Cointegração: Verifica cointegração por janela e Encontrar Coint: descobre quais combinações de ativos estão cointegradas para um intervalo de tempo e um tamanho ótimo", divider='rainbow')	
+	
+co1, co2 = st.columns(2)	
+with co1:
+	nc = st.selectbox("Níveis críticos:",["1%","5%", "10%"])
+	freqs_ = list(offset_mapping.keys())
+	freq_ = st.selectbox("Freq Coint", freqs_)
+	window_size_ = st.number_input('Coint Window Size:',1, 1000, 1,step=1) 
+	approach_ =  st.radio("Coint opção:", ["constant", "forward", "back"])
+	variavel_y = st.selectbox('Variável Y:', session_state.data.columns)
+	variaveis_coint = st.multiselect('Variáveis Cointegrantes:',session_state.data.columns)
+	det_order = st.number_input('-1 Auto, 0 None, 1 linear, 2 Square',-1,2, -1,step=1)
+	k_ar_diff = st.number_input("Número de diferenciações", 0, 10, 0, step=1)
+	maxlag = st.number_input("Coint Maxlag", 1, 10000 , step=1)
+	cointegrar = st.button('Testar Cointegração')
+	if cointegrar:
+		if session_state.data is not None:
+			cointegracao = coint_window(session_state.data, freq_, window_size_, approach_, variavel_y, variaveis_coint, maxlag, det_order , k_ar_diff, nc)
+			st.write(cointegracao) 
+
+st.subheader('Chat', help="Deixe uma mensagem", divider='rainbow')
 
 if "messages" not in st.session_state:
     st.session_state.messages = load_chat_history()
@@ -731,6 +1074,3 @@ if prompt := st.chat_input("Deixe uma mensagem!"):
         st.session_state.messages.pop(0)  # Remove a mensagem mais antiga
     # Salva o histórico no arquivo
     save_chat_history(st.session_state.messages)
-
-
-
