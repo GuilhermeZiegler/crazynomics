@@ -436,9 +436,6 @@ def johansen_cointegration_test(df, variavel_y, variaveis_coint, det_order=-1, k
     resultado_df = pd.DataFrame([resultado])  # Crie um DataFrame a partir do dicionário resultado
     return resultado_df
 
-
-
-
 def coint_window(df, offset_type, window_size, approach, variavel_y, variaveis_coint, maxlag, det_order=-1, k_ar_diff=0, nc="5%"):
     result = []
     max_index = df.index.max()
@@ -922,7 +919,7 @@ if st.button("Filtrar Dados"):
 
 dias_moving_avg =  st.sidebar.number_input('Dias para inputar média móvel:',1, 100, 3,step=1)                     
 
-if st.sidebar.button("Alicar Moving Avg"):
+if st.sidebar.button("Média Móvel"):
     if session_state.data is not None:
             fill_moving_avg(session_state.data, dias_moving_avg)          
             
