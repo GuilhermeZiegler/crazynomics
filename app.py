@@ -7,6 +7,8 @@ import numpy as np
 import datetime as dt
 from datetime import timedelta, datetime, time
 from openpyxl import Workbook
+from math import sqrt
+
 
 ## importação de bibliotecas de plotagem de visualziação de dados
 import seaborn as sns
@@ -31,17 +33,28 @@ import joblib
 import glob
 
 
-## importações de modelos
+# Tratamentos gerais 
+from sklearn.preprocessing import MinMaxScaler
+from sklearn.impute import SimpleImputer
+
+# Modelos de séries temporais
+from statsmodels.tsa.statespace.sarimax import SARIMAX
+from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_error, mean_absolute_percentage_error
+from itertools import product
+from statsmodels.tsa.stattools import adfuller
+from statsmodels.tsa.vector_ar.vecm import coint_johansen
+import pmdarima as pm
+
+
+# demais modelos
 import optuna
 from category_encoders import JamesSteinEncoder, WOEEncoder, CatBoostEncoder
-from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.linear_model import LogisticRegression
 from lightgbm import LGBMClassifier
 from catboost import CatBoostClassifier
 from xgboost import XGBClassifier
-from statsmodels.tsa.stattools import adfuller
-from statsmodels.tsa.vector_ar.vecm import coint_johansen
+
 
 # importação de dados
 import yfinance as yf
@@ -436,7 +449,7 @@ def johansen_cointegration_test(df, variavel_y, variaveis_coint, det_order=-1, k
     resultado_df = pd.DataFrame([resultado])  # Crie um DataFrame a partir do dicionário resultado
     return resultado_df
 
-def coint_window(df, offset_type, window_size, approach, variavel_y, variaveis_coint, maxlag, det_order=-1, k_ar_diff=0, nc="5%"):
+def coint_window(df, offset_type, window_size, approach, variavel_y, variaveis_coint,det_order=-1, k_ar_diff=0, nc="5%"):
     result = []
     max_index = df.index.max()
     min_index = df.index.min()
@@ -493,6 +506,125 @@ def coint_window(df, offset_type, window_size, approach, variavel_y, variaveis_c
     
     return combined_result
 		
+def my_auto_arima(cut, df,variavel,teste,d, max_p,max_q,seasonal,m):
+	ar1, ar2, ar3 = st.columns([1,1,1])
+	train_size = int(len(df) * (1 - cut))
+	train_df = df.iloc[:train_size]
+	test_df = df.iloc[train_size:]
+	train_df = pd.DataFrame(train_df[variavel])
+	test_df = pd.DataFrame(test_df[variavel])
+	with ar1:
+		st.write('Tamanho total do df: ', len(df))
+		st.write('Tamanho de treino df:', len(train_df))
+		st.write('Tamanho de teste df:', len(test_df))				  
+		model = pm.auto_arima(train_df, 
+						  test=teste, 
+						  start_p=1, 
+						  d=d, 
+						  start_q=1,
+                          max_p=max_p, 
+						  max_q=max_q,
+                          seasonal=seasonal,
+						  m=m,
+                          stepwise=True, trace=True,
+                          error_action='ignore',
+                          suppress_warnings=True)
+
+		predictions = model.predict(n_periods=len(test_df))
+		forecast_df = pd.DataFrame()
+		forecast_df['forecast_OOT'] = predictions
+		forecast_df.index = test_df.index
+		df = df[[variavel]]
+		df = df.merge(forecast_df, left_index=True, right_index=True, how ="outer")
+		st.dataframe(df)
+	with ar2:
+		st.write(model.summary())
+	with ar3:
+		fig = px.line(df, x = df.index, y=df.columns,
+						  title ="AutoArima") 
+		with st.container():
+			st.plotly_chart(fig)
+
+@st.cache_data
+def SARIMALL(cut, df, variavel, stationarity, p, d, q, P, D, Q, limite_combinacoes, lags, metric,variar_lag, n_plots):
+	filtered_df = df[variavel]
+	train_size = int(len(df) * (1 - cut))
+	train_df = filtered_df.iloc[:train_size]
+	test_df = filtered_df.iloc[train_size:]
+	st.write('Tamanho total do df: ', len(filtered_df))
+	st.write('Tamanho de treino df:', len(train_df))
+	st.write('Tamanho de teste df:', len(test_df))
+	resultados_list = []
+	params = {'p': p, 'd': d, 'q': q, 'P': P, 'D': D, 'Q': Q}  # Defina os parâmetros como um dicionário
+
+	if params is not None:
+		for key, value in params.items():
+			if value == -1:
+				params[key] = None
+
+	p, d, D, P, Q, q = params.values()
+
+	param_ranges = [list(range(limite_combinacoes + 1)) if param is None else [param] for param in [p, d, q, P, D, Q]]
+	if variar_lag == "Fixo":
+		lags_values = [lags]  # Se lags deve ser fixo, use o valor especificado
+	else:
+		lags_values = list(range(1, lags + 1)) 
+	param_ranges.append(lags_values)
+	param_combinations = list(product(*param_ranges))
+	coluna1, coluna2 = st.columns(2)
+	resultados_df = pd.DataFrame(columns=["p", "d", "q", "P", "D", "Q", "lags", "aic","bic","rmse","mse","mae","mape"])
+	for params in param_combinations:
+		p, d, q, P, D, Q, lags = params
+		try:
+			modelo = SARIMAX(train_df, 
+							 order=(p, d, q),
+							 seasonal_order=(P, D, Q, lags),
+							 enforce_stationarity=stationarity)
+			resultado_modelo = modelo.fit()
+			y_pred = resultado_modelo.get_forecast(steps=len(test_df)).predicted_mean
+			rmse = sqrt(mean_squared_error(test_df, y_pred))
+			mae = mean_absolute_error(test_df, y_pred)  # Exemplo de outra métrica
+			mse = mean_squared_error(test_df, y_pred)
+			mape = mean_absolute_percentage_error(test_df, y_pred)
+			aic = resultado_modelo.aic
+			bic = resultado_modelo.bic
+			resultados_list.append({'p': p, 'd': d, 'q': q, 
+									'P': P, 'D': D, 'Q': Q,
+									'lags': lags, 'aic': aic, 'bic': bic, 
+									'rmse': rmse, 'mse': mse, 'mae': mae, 
+									'mape': mape})
+		except Exception as e:
+			continue
+	
+	resultados_df = pd.DataFrame(resultados_list)             
+	resultados_df = resultados_df.sort_values(by=metric)
+	df_previsoes = pd.DataFrame(index=test_df.index)
+	if n_plots <= len(resultados_df): 
+		melhores_configuracoes = resultados_df.head(n_plots)
+		for _, row in melhores_configuracoes.iterrows():
+			p, d, q, P, D, Q, lags = row[['p', 'd', 'q', 'P', 'D', 'Q', 'lags']]
+			modelo = SARIMAX(train_df, 
+							 order=(p, d, q),
+							 seasonal_order=(P, D, Q, lags),
+							 enforce_stationarity=stationarity)
+			resultado_modelo = modelo.fit()
+			y_pred = resultado_modelo.get_forecast(steps=len(test_df)).predicted_mean
+			y_pred.index = test_df.index
+			coluna = f'Previsão (p={p}, d={d}, q={q}, P={P}, D={D}, Q={Q}, lags={lags})'
+			df_previsoes[coluna] = y_pred
+			
+		df_completo = pd.DataFrame(filtered_df).merge(df_previsoes, left_index=True, right_index=True, how='outer')
+		fig = px.line(df_completo, x = df_completo.index, y=df_completo.columns,
+						  title ="SARIMALL")
+		with coluna2:
+			st.plotly_chart(fig)
+	else: 
+		st.write("Reduza n_plots para convergir com a quantidade de modelos otimizados")
+	with coluna1:
+		st.write("Total de modelos para o otimizador: ", len(param_combinations))
+		st.markdown("Resultados Otimizados")
+		st.dataframe(resultados_df)
+	return resultados_df
 
 ## Configuração da página e do título
 st.set_page_config(page_title='Monografia Guilherme Ziegler', layout = 'wide', initial_sidebar_state = 'auto')
@@ -517,9 +649,16 @@ def get_session():
 session_state = get_session()
 
 if st.button('Carregue a base'):
-    session_state.data = read_parquet_file()
-    st.write('Base histórica lida com sucesso!')
-
+	session_state.data = read_parquet_file()
+	st.write('Base histórica lida com sucesso!')
+	
+excel_file = st.file_uploader("Selecione um arquivo em excel para leitura", type=["xlsx", "xls"])
+ler_excel = st.button("Carregar Excel")
+if ler_excel and excel_file is not None:
+	session_state.data = pd.read_excel(excel_file)
+	st.write("Excel carregado com sucesso")
+else: 
+	st.warning('É preciso subir um arquivo válido em "browse files"')
 ## Bloco de datas para slicer
 
 max_date = dt.datetime.today().date()
@@ -866,7 +1005,10 @@ st.subheader("Variáveis selecionadas:", help = "Variáveis que você escolhe pa
 
 
 merged_df = pd.concat([df_moedas, df_empresas, df_commodities, df_indices], axis=0)
-st.markdown(merged_df.index.to_list())
+exibe_df = merged_df.copy().index.to_list()
+exibe_df = pd.DataFrame(exibe_df).T
+st.dataframe(exibe_df)
+
 start = start_date 
 end = end_date
 dfs = pd.DataFrame()
@@ -904,12 +1046,12 @@ manter_colunas = st.sidebar.button("Manter Colunas")
 if manter_colunas:
 	if session_state.data is not None:
 		session_state.data = guardar_coluna(session_state.data,colunas_keep)
-	
+		
 if st.button("Filtrar Dados"):
-    if session_state.df is not None:
-        session_state.data = filtra_dados(session_state.df, merged_df,start_date,end_date)
-    else:
-        st.warning('O DataFrame df não foi carregado ainda. Por favor, clique no botão para carregar a base de dados.')
+    session_state.data = read_parquet_file()
+    session_state.data = filtra_dados(session_state.data, merged_df, start_date, end_date)
+else:
+    st.warning('Para carregar do excel: clique no botão carregar excel. Neste caso, não há como usar o filtra dados')
 
 ## bloco de corte por volume por percentual de zeros
 #corte_volume = st.sidebar.slider('Remove Volume_ para percentual de 0 na coluna', 0, 100, 100, step=1)
@@ -925,10 +1067,11 @@ if st.sidebar.button("Média Móvel"):
             
 # Exibição dos resultados
 if session_state.data is not None:
-    st.write("DataFrame:")
-    st.dataframe(session_state.data)
-    candles_tickers = get_candle(session_state.data, [lista_indices, lista_empresas, moedas, lista_commodities])  
-	
+	st.write("DataFrame:")
+	st.dataframe(session_state.data)
+	st.write(session_state.data.shape)
+	candles_tickers = get_candle(session_state.data, [lista_indices, lista_empresas, moedas, lista_commodities])  
+
 baixar_excel = st.button("Baixar Excel")
 st.markdown('Pix para doações: guitziegler@gmail.com')
 if baixar_excel:
@@ -1025,7 +1168,7 @@ st.subheader('Verificador de  Coinregração', help="Testar Cointegração: Veri
 	
 co1, co2 = st.columns(2)	
 with co1:
-	nc = st.selectbox("Níveis críticos:",["1%","5%", "10%"])
+	nc = st.selectbox("Níveis críticos:",["5%","10%", "1%"])
 	freqs_ = list(offset_mapping.keys())
 	freq_ = st.selectbox("Freq Coint", freqs_)
 	window_size_ = st.number_input('Coint Window Size:',1, 1000, 1,step=1) 
@@ -1034,12 +1177,72 @@ with co1:
 	variaveis_coint = st.multiselect('Variáveis Cointegrantes:',session_state.data.columns)
 	det_order = st.number_input('-1 Auto, 0 None, 1 linear, 2 Square',-1,2, -1,step=1)
 	k_ar_diff = st.number_input("Número de diferenciações", 0, 10, 0, step=1)
-	maxlag = st.number_input("Coint Maxlag", 1, 10000 , step=1)
 	cointegrar = st.button('Testar Cointegração')
 	if cointegrar:
 		if session_state.data is not None:
-			cointegracao = coint_window(session_state.data, freq_, window_size_, approach_, variavel_y, variaveis_coint, maxlag, det_order , k_ar_diff, nc)
+			cointegracao = coint_window(session_state.data, freq_, window_size_, approach_, variavel_y, variaveis_coint,det_order , k_ar_diff, nc)
 			st.write(cointegracao) 
+
+st.subheader('Modelos Temporais', help="ARIMA, SARIMA, VAR e VEC", divider='rainbow')				
+
+st.subheader("Auto Arima", help ="Utiliza a função padrão autoarima para gerar um modelo. Baseado em AIC. Considera diferenciação quando d >= 1. Para usar um modelo com diferenciação aplique a função de diferenciação do dataframe. Você pode configurar a frequência do seu dataframe com as funções auxiliares")	
+
+columns_list = [col for col in session_state.data.columns if col != 'Date']
+
+a1, a2, a3= st.columns(3)
+
+with(a1):
+	variavel = st.selectbox("Selecione a Variável", columns_list)
+	cut = st.number_input("Percentual de split treinamento e teste:", 0.0,1.0, 0.25,step=0.01)
+	autoarima = st.button("auto_arima")
+with(a2):
+	max_p = st.number_input("Max_p:", 1,100,3,step=1)
+	max_q = st.number_input("Max_q:", 1,100,3,step=1)
+	d = st.number_input("d: None = -1", min_value=-1, max_value=100, step=1, value=-1, format="%d")
+if d == -1:
+    d = None
+
+with(a3):
+	m = st.number_input("Período da sazonalidade, False = 1",1,100,step=1)
+	seasonal = st.selectbox("Permitir Sazonalidade:",[False, True])
+	teste = st.radio("Teste", ["adf", "kpss", "pp"])
+
+if autoarima:
+	if session_state.data is not None:
+		model = my_auto_arima(cut,session_state.data, variavel, teste,d, max_p,max_q,seasonal,m)
+
+st.subheader("SARIMALL", help ="Você pode configurar os parâmetros individualmente ou deixar que o otimizador encontre o melhor modelo de acordo com um limite de variação dos parâmetros. Quando os parametros forem -1, significa que seguem o default None e a função usará análise combinatória para achar o melhor modelo. Certifique-se de garantir que você tem capacidade para processar a função. Se os parâmetros forem considerados, a função SARIMALL funciona como um SARIMA personalizado. Max_lags é o único parametro cujo default é variar até 12. Os demais variam até 3, para limitar o estouro de combinações. ATENÇÃO: TEMPO ESTIMADO É DE 5 SEGUNDOS POR MODELO. TEMPO MÉDIO MIL MODELOS É DE 13,8 HORAS ")	
+
+st.markdown("Selecione os parametros para o otimizador")
+
+s1, s2, s3= st.columns(3)
+
+with s1:
+	st.markdown("Configurações")
+	variavel2 = st.selectbox("Selecione", columns_list)
+	cut2 = st.number_input("Proporção de teste", 0.0,1.0, 0.25,step=0.01)
+	metric = st.selectbox("Otimizar por:", ['rmse', 'mse', 'mae','mape','aic', 'bic'])
+	n_plots = st.number_input("Quantidade de Plots otimizados",1,10,3,step=1)
+	sarimall = st.button("SARIMALL")
+with s2:
+	st.markdown("Parâmetros") 
+	p =st.number_input("p", -1,10,-1,step=1)
+	d2 = st.number_input("d", -1,10,-1,step=1)
+	q =st.number_input("q", -1,10,-1,step=1)
+	limite_combinacoes = st.number_input("Limite p, d, q, P, D, Q:", 1,10,3,step=1)
+	stationarity = st.selectbox("Forçar estacionariedade?", [True,False])
+	
+with s3:
+	st.markdown("Parâmetros Sazonais") 					
+	P =st.number_input("P", -1,10,-1,step=1)
+	D =st.number_input("D", -1,10,-1,step=1)
+	Q =st.number_input("Q",-1,10,-1,step=1)
+	lags = st.number_input("Max Lags:", 2,30,12,step=1)
+	variar_lag = st.selectbox("Lag fixo ou em range:", ["Fixo", "Range"])
+
+if sarimall:
+	if session_state.data is not None:
+		model = SARIMALL(cut2, session_state.data, variavel2,stationarity, p, d2, q, P, D, Q,limite_combinacoes,lags,metric,variar_lag, n_plots)
 
 st.subheader('Chat', help="Deixe uma mensagem", divider='rainbow')
 
