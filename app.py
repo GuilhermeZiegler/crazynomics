@@ -556,6 +556,7 @@ def SARIMALL(cut, df, variavel, stationarity, p, d, q, P, D, Q, limite_combinaco
 	st.write('Tamanho de teste df:', len(test_df))
 	resultados_list = []
 	params = {'p': p, 'd': d, 'q': q, 'P': P, 'D': D, 'Q': Q}  # Defina os parâmetros como um dicionário
+	st.write("Total de modelos para o otimizador: ", len(param_combinations))
 
 	if params is not None:
 		for key, value in params.items():
@@ -621,7 +622,6 @@ def SARIMALL(cut, df, variavel, stationarity, p, d, q, P, D, Q, limite_combinaco
 	else: 
 		st.write("Reduza n_plots para convergir com a quantidade de modelos otimizados")
 	with coluna1:
-		st.write("Total de modelos para o otimizador: ", len(param_combinations))
 		st.markdown("Resultados Otimizados")
 		st.dataframe(resultados_df)
 	return resultados_df
