@@ -1221,7 +1221,7 @@ with p2:
 				st.write(result_df)
 
 			
-st.subheader('Verificador de  Coinregração', help="Testar Cointegração: Verifica cointegração por janela de tempo. Encontrar Coint: descobre quais combinações de ativos estão cointegradas para um intervalo de tempo e um tamanho ótimo. ATENÇÃO: Dados precisam estar com o index de data. Caso venha do filtro, automaticamente estarão neste formto.", divider='rainbow')	
+st.subheader('Verificador de  Cointegração', help="Testar Cointegração: Verifica cointegração por janela de tempo. Encontrar Coint: descobre quais combinações de ativos estão cointegradas para um intervalo de tempo e um tamanho ótimo. ATENÇÃO: Dados precisam estar com o index de data. Caso venha do filtro, automaticamente estarão neste formto.", divider='rainbow')	
 	
 co1, co2 = st.columns(2)	
 with co1:
