@@ -171,6 +171,38 @@ def fill_moving_avg(dfs, window_size):
     st.write(f'Quantidade de NaN: {dfs.isna().sum().sum()} dados nulos')
     st.write(dfs.isna().sum().to_frame().T)
 
+def frequencia_amostral(df, frequencia_desejada, funcao_agregacao='sum'):
+    frequencia_para_periodo = {
+        'diária': 'D',
+        'semanal': 'W',
+        'quinzenal': '2W',
+        'mensal': 'M',
+        'bimestral': '2M',
+        'trimestral': '3M',
+        'quadrimestral': '4M',
+        'semestral': '6M',
+        'anual': 'A'
+    }
+
+    if frequencia_desejada not in frequencia_para_periodo:
+        raise ValueError("Frequência desejada não suportada.")
+
+    periodo = frequencia_para_periodo[frequencia_desejada]
+    
+    resampled_series = df.resample(periodo)
+    
+    if funcao_agregacao == 'sum':
+        result_series = resampled_series.sum()
+    elif funcao_agregacao == 'mean':
+        result_series = resampled_series.mean()
+    elif funcao_agregacao == 'median':
+        result_series = resampled_series.median()
+    elif funcao_agregacao == 'valor_exato':
+        result_series = df[df.index.isin(resampled_series.first().index)]
+    else:
+        raise ValueError("Função de agregação não suportada.")
+    
+    return result_series
 
 def read_parquet_file():
     response = requests.get(link)
@@ -330,7 +362,7 @@ def stationary_window_adf_multi_columns(dataframe, window_size, approach, offset
     max_index = dataframe.index.max()
     min_index = dataframe.index.min()
     offset_mapping = {
-       'D': 'days',
+        'D': 'days',
         'BD': 'weekday',
         'W': 'weeks',
         'M': 'months',
@@ -505,19 +537,22 @@ def coint_window(df, offset_type, window_size, approach, variavel_y, variaveis_c
     combined_result = pd.concat(result, ignore_index=True)
     
     return combined_result
-		
+
+@st.cache_data
 def my_auto_arima(cut, df,variavel,teste,d, max_p,max_q,seasonal,m):
-	ar1, ar2, ar3 = st.columns([1,1,1])
-	train_size = int(len(df) * (1 - cut))
-	train_df = df.iloc[:train_size]
-	test_df = df.iloc[train_size:]
-	train_df = pd.DataFrame(train_df[variavel])
-	test_df = pd.DataFrame(test_df[variavel])
-	with ar1:
-		st.write('Tamanho total do df: ', len(df))
-		st.write('Tamanho de treino df:', len(train_df))
-		st.write('Tamanho de teste df:', len(test_df))				  
-		model = pm.auto_arima(train_df, 
+	ar1, ar2 = st.columns(2)
+	filterd_df = df[variavel]
+	if filterd_df.isna().any().any():
+		st.warning("Dados NaN encontrados. Por favor, processe o dataframe")
+		return
+	
+	train_size = int(len(filterd_df) * (1 - cut))
+	train_df = filterd_df.iloc[:train_size]
+	test_df = filterd_df.iloc[train_size:]
+	st.write('Tamanho total do df: ', len(df))
+	st.write('Tamanho de treino df:', len(train_df))
+	st.write('Tamanho de teste df:', len(test_df))				  
+	model = pm.auto_arima(train_df, 
 						  test=teste, 
 						  start_p=1, 
 						  d=d, 
@@ -530,24 +565,28 @@ def my_auto_arima(cut, df,variavel,teste,d, max_p,max_q,seasonal,m):
                           error_action='ignore',
                           suppress_warnings=True)
 
-		predictions = model.predict(n_periods=len(test_df))
-		forecast_df = pd.DataFrame()
-		forecast_df['forecast_OOT'] = predictions
-		forecast_df.index = test_df.index
-		df = df[[variavel]]
-		df = df.merge(forecast_df, left_index=True, right_index=True, how ="outer")
-		st.dataframe(df)
+	predictions = model.predict(n_periods=len(test_df))
+	forecast_df = pd.DataFrame()
+	forecast_df['forecast_OOT'] = predictions
+	forecast_df.index = test_df.index
+	df = df[[variavel]]
+	df = df.merge(forecast_df, left_index=True, right_index=True, how ="outer")
+	with ar1:
+		with st.container():
+			st.write(model.summary())
+	fig = px.line(df, x = df.index, y=df.columns,
+						 title ="AutoArima") 
 	with ar2:
-		st.write(model.summary())
-	with ar3:
-		fig = px.line(df, x = df.index, y=df.columns,
-						  title ="AutoArima") 
 		with st.container():
 			st.plotly_chart(fig)
 
 @st.cache_data
 def SARIMALL(cut, df, variavel, stationarity, p, d, q, P, D, Q, limite_combinacoes, lags, metric,variar_lag, n_plots):
 	filtered_df = df[variavel]
+	if filterd_df.isna().any().any():
+		st.warning("Dados NaN encontrados. Por favor, processe o dataframe")
+		return
+
 	train_size = int(len(df) * (1 - cut))
 	train_df = filtered_df.iloc[:train_size]
 	test_df = filtered_df.iloc[train_size:]
@@ -1064,7 +1103,25 @@ dias_moving_avg =  st.sidebar.number_input('Dias para inputar média móvel:',1,
 if st.sidebar.button("Média Móvel"):
     if session_state.data is not None:
             fill_moving_avg(session_state.data, dias_moving_avg)          
-            
+
+frequencia_para_periodo = {
+        'diária': 'D',
+        'semanal': 'W',
+        'quinzenal': '2W',
+        'mensal': 'M',
+        'bimestral': '2M',
+        'trimestral': '3M',
+        'quadrimestral': '4M',
+        'semestral': '6M',
+        'anual': 'A'
+    }			
+frequencia_desejada = st.sidebar.selectbox("Selecione a frequência desejada:", list(frequencia_para_periodo.keys()))
+funcao_agregacao = st.sidebar.selectbox("Selecione a função de agregação:", ['sum', 'mean', 'median', 'valor_exato'])
+reamostrar = st.sidebar.button("Reamostrar Dados")
+if reamostrar:
+	if session_state is not None:
+		session_state.data = frequencia_amostral(session_state.data,frequencia_desejada,funcao_agregacao)
+			
 # Exibição dos resultados
 if session_state.data is not None:
 	st.write("DataFrame:")
@@ -1164,7 +1221,7 @@ with p2:
 				st.write(result_df)
 
 			
-st.subheader('Verificador de  Coinregração', help="Testar Cointegração: Verifica cointegração por janela e Encontrar Coint: descobre quais combinações de ativos estão cointegradas para um intervalo de tempo e um tamanho ótimo", divider='rainbow')	
+st.subheader('Verificador de  Coinregração', help="Testar Cointegração: Verifica cointegração por janela de tempo. Encontrar Coint: descobre quais combinações de ativos estão cointegradas para um intervalo de tempo e um tamanho ótimo. ATENÇÃO: Dados precisam estar com o index de data. Caso venha do filtro, automaticamente estarão neste formto.", divider='rainbow')	
 	
 co1, co2 = st.columns(2)	
 with co1:
