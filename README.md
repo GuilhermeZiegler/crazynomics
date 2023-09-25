@@ -61,7 +61,7 @@ Você pode realizar o seguinte processamento nos dados:
 - Função autoarima: com configuração de Max_p, Max_q, d, test, seasonal, m e proporção de split train test.
 - Função SARIMALL: otimizador de SARIMA por métricas de predição RMSE, RME, MAE, MAPE e critérios AIC e BIC. Configuração combinatória dos parâmetros p, q, d, P, Q, D, lags de acordo com limites estabelecidos.
 - Função SARIMALL: ajuste no modelo exato quando os parâmetros p, q, d, P, Q, D são diferentes de -1 e lags são fixos.
-- Função AutoVAR: ajuste de modelos combinatórios de VAR com as variáveis selecionadas para a diferenciação considerada. Opção de filtro por teste de causalidade de Granger (restrição de variáveis) e métrica de erro RMSE, RME, MAE, MAPE. Possibilidade de trabalhar com modelo na diferença ou realizar o ajuste da métrica após a integração upwind e nivelamento dos dados.
+- Função AutoVAR: ajuste de modelos combinatórios de VAR com as variáveis selecionadas para a diferenciação considerada. Opção de filtro por teste de causalidade de Granger (restrição de variáveis) e métrica de erro RMSE, RME, MAE, MAPE. Possibilidade de trabalhar com modelo na diferença ou realizar o ajuste da métrica após a integração upwind e nivelamento dos dados (implementação futura)
 - AutoVAR estrutural: analisa todas as combinações possíveis na matriz de decomposição de Cholesky e retorna a melhor composição para métricas de previsão.
 - AutoVEC: (implementação futura)
 
