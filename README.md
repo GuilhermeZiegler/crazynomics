@@ -1,6 +1,7 @@
 # crazynomics
 
 Este aplicativo filtra dados do mercado financeiro para os seguintes tipos de ativos: moedas, commodities, índices e ativos.
+Acesso: https://crazynomics.streamlit.app/
 
 ## Carregamento dos dados
 
