@@ -39,6 +39,7 @@ from sklearn.preprocessing import MinMaxScaler
 from sklearn.impute import SimpleImputer
 
 # Modelos de séries temporais
+import statsmodels.api as sm
 from statsmodels.tsa.statespace.sarimax import SARIMAX
 from statsmodels.tsa.stattools import grangercausalitytests
 from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_error, mean_absolute_percentage_error
@@ -570,6 +571,7 @@ def my_auto_arima(cut, df,variavel,teste,d, max_p,max_q,seasonal,m):
                           suppress_warnings=True)
 
 	predictions = model.predict(n_periods=len(test_df))
+	st.dataframe(predictions)
 	forecast_df = pd.DataFrame()
 	forecast_df['forecast_OOT'] = predictions
 	forecast_df.index = test_df.index
@@ -721,6 +723,120 @@ def grangercausalitytests_trintinalia(df, y_column, max_lags, n, nc=0.05, x_colu
         session_state.data = session_state.data[colunas_filtradas]
 
     return session_state.data 
+
+def AUTOVAR(df, vardiff, cut, max_lags, var_y, x_columns):
+    variables = [var_y] + x_columns 
+    df_combo = []
+    for _ in range(vardiff):
+        df = df.diff()
+        df.dropna(inplace=True)
+    for r in range(1, len(variables) + 1):
+        combos = combinations(variables, r)
+        for combo in combos:
+            if combo[0] == var_y and len(combo) > 1:
+                df_combo.append(combo)  # Remova list() aqui
+    st.write(f"Foram gerados {len(df_combo)} conjuntos para o modelo VAR")
+    model_colnames_list = []
+    lags_list = []
+    rmse_list = []
+    posicao_combinacao_list = []
+    predicted_dfs = []
+    train_dfs = []
+    train_size  = int(len(df) * (1 - cut))
+    
+    for posicao, df_combinacao in enumerate(df_combo):
+        if all(col in df.columns for col in df_combinacao):
+            VARn_combinacao = df[list(df_combinacao)]
+            
+            rmse_dict = {}
+            
+            for k in range(1, max_lags + 1):
+                train_df = VARn_combinacao.iloc[:train_size, :]
+                test_df = VARn_combinacao.iloc[train_size:, :]
+                model = VAR(train_df)
+                fitted_model = model.fit(maxlags=k)
+                
+                n_forecast = len(test_df)
+                forecast = fitted_model.forecast(y=test_df.values, steps=n_forecast)
+                
+                predicted_df = pd.DataFrame(forecast, columns=test_df.columns, index=test_df.index)
+                rmse = sqrt(mean_squared_error(test_df[var_y], predicted_df[var_y]))
+                
+                rmse_dict[k] = rmse
+        
+            lag_otimo = min(rmse_dict, key=rmse_dict.get)
+            modelo_name = f"Modelo_lag{lag_otimo}"
+            concatenated_colnames = " ".join(train_df.columns)
+            
+            model_colnames_list.append(concatenated_colnames)
+            lags_list.append(lag_otimo)
+            rmse_list.append(rmse_dict[lag_otimo])
+            posicao_combinacao_list.append(posicao)
+            train_dfs.append(train_df)
+            predicted_dfs.append(predicted_df)
+    
+    df_resultante = pd.DataFrame({
+        'model_colnames': model_colnames_list,
+        'Lags': lags_list,
+        'RMSE': rmse_list,
+        'posicao_da_combinacao': posicao_combinacao_list})
+    df_resultante = df_resultante.sort_values(by="RMSE")
+    st.dataframe(df_resultante)
+    
+# Plotar todas as previsões no mesmo gráfico com Plotly Express
+    fig = px.line()
+    fig.add_scatter(x=train_df.index, y=train_df[var_y], mode='lines', name='Treinamento')
+    fig.add_scatter(x=test_df.index, y=test_df[var_y], mode='lines', name='Teste')
+
+    for idx, row in df_resultante.head(10).iterrows():  # Plotar as previsões dos 10 melhores modelos
+        lag = row['Lags']
+        predicted_df = predicted_dfs[row['posicao_da_combinacao']]
+        fig.add_scatter(x=predicted_df.index, y=predicted_df[var_y], mode='lines', name=f'Previsão (Lags={lag})')
+
+    fig.update_layout(
+        title="Previsões dos 10 Melhores Modelos",
+        xaxis_title="Data",
+        yaxis_title=var_y,
+        showlegend=True,
+    )
+
+    st.plotly_chart(fig)
+
+def gerar_betas(df, colunas):
+    beta_df = pd.DataFrame(index=colunas, columns=colunas)
+
+    # Loop para calcular os coeficientes beta
+    for col1 in colunas:
+        for col2 in colunas:
+            if col1 != col2:
+                X = np.log(df[col2] / df[col2].shift(1)).dropna()  # Variável independente
+                y = np.log(df[col1] / df[col1].shift(1)).dropna()  # Variável dependente
+                common_index = X.index.intersection(y.index)  # Índices comuns
+                
+                if len(common_index) > 0:  # Verificar se há dados comuns
+                    X = X[common_index]
+                    y = y[common_index]
+                    X = sm.add_constant(X)  # Adicionar constante ao modelo
+                    model = sm.OLS(y, X).fit()  # Ajustar o modelo de regressão linear
+                    beta = model.params[1]  # Coeficiente beta (o índice 1 representa a variável independente)
+                    beta_df.at[col1, col2] = beta
+    beta_df.fillna(1, inplace = True)
+    # Criação do heatmap
+    fig = px.imshow(
+        beta_df,
+        color_continuous_scale=[[0, 'red'], [0.5, 'white'], [1, 'blue']],
+        zmin=-2,
+        zmax=2
+    )
+    fig.update_xaxes(tickvals=list(range(len(beta_df.index))), ticktext=beta_df.index)
+    fig.update_yaxes(tickvals=list(range(len(beta_df.columns))), ticktext=beta_df.columns)
+    fig.update_layout(
+        title="Heatmap Dinâmico dos Coeficientes Beta",
+        width=1000,  # Defina a largura da figura
+        height=800  # Defina a altura da figura
+    )
+
+    st.plotly_chart(fig)	
 
 ## Configuração da página e do título
 st.set_page_config(page_title='Monografia Guilherme Ziegler', layout = 'wide', initial_sidebar_state = 'auto')
@@ -1525,83 +1641,6 @@ if granger_causalidade:
 
 st.subheader("AUTOVARVEC", help ="Utiliza análise combinatória para encontrar o VARVEC otimizado por parametros de previsão. Usa função Verificador de Coinregração. Se houver cointegração entre as séries configura um modelo VEC. Caso não haja cointegração, configura um modelo VAR combinatório que testa as n combinações para as colunas regressoras par a par")	
 
-def AUTOVAR(df, vardiff, cut, max_lags, var_y, x_columns):
-    variables = [var_y] + x_columns 
-    df_combo = []
-    for _ in range(vardiff):
-        df = df.diff()
-        df.dropna(inplace=True)
-    for r in range(1, len(variables) + 1):
-        combos = combinations(variables, r)
-        for combo in combos:
-            if combo[0] == var_y and len(combo) > 1:
-                df_combo.append(combo)  # Remova list() aqui
-    st.write(f"Foram gerados {len(df_combo)} conjuntos para o modelo VAR")
-    model_colnames_list = []
-    lags_list = []
-    rmse_list = []
-    posicao_combinacao_list = []
-    predicted_dfs = []
-    train_dfs = []
-    train_size  = int(len(df) * (1 - cut))
-    
-    for posicao, df_combinacao in enumerate(df_combo):
-        if all(col in df.columns for col in df_combinacao):
-            VARn_combinacao = df[list(df_combinacao)]
-            
-            rmse_dict = {}
-            
-            for k in range(1, max_lags + 1):
-                train_df = VARn_combinacao.iloc[:train_size, :]
-                test_df = VARn_combinacao.iloc[train_size:, :]
-                model = VAR(train_df)
-                fitted_model = model.fit(maxlags=k)
-                
-                n_forecast = len(test_df)
-                forecast = fitted_model.forecast(y=test_df.values, steps=n_forecast)
-                
-                predicted_df = pd.DataFrame(forecast, columns=test_df.columns, index=test_df.index)
-                rmse = sqrt(mean_squared_error(test_df[var_y], predicted_df[var_y]))
-                
-                rmse_dict[k] = rmse
-        
-            lag_otimo = min(rmse_dict, key=rmse_dict.get)
-            modelo_name = f"Modelo_lag{lag_otimo}"
-            concatenated_colnames = " ".join(train_df.columns)
-            
-            model_colnames_list.append(concatenated_colnames)
-            lags_list.append(lag_otimo)
-            rmse_list.append(rmse_dict[lag_otimo])
-            posicao_combinacao_list.append(posicao)
-            train_dfs.append(train_df)
-            predicted_dfs.append(predicted_df)
-    
-    df_resultante = pd.DataFrame({
-        'model_colnames': model_colnames_list,
-        'Lags': lags_list,
-        'RMSE': rmse_list,
-        'posicao_da_combinacao': posicao_combinacao_list})
-    df_resultante = df_resultante.sort_values(by="RMSE")
-    st.dataframe(df_resultante)
-    
-# Plotar todas as previsões no mesmo gráfico com Plotly Express
-    fig = px.line()
-    fig.add_scatter(x=train_df.index, y=train_df[var_y], mode='lines', name='Treinamento')
-    fig.add_scatter(x=test_df.index, y=test_df[var_y], mode='lines', name='Teste')
-
-    for idx, row in df_resultante.head(10).iterrows():  # Plotar as previsões dos 10 melhores modelos
-        lag = row['Lags']
-        predicted_df = predicted_dfs[row['posicao_da_combinacao']]
-        fig.add_scatter(x=predicted_df.index, y=predicted_df[var_y], mode='lines', name=f'Previsão (Lags={lag})')
-
-    fig.update_layout(
-        title="Previsões dos 10 Melhores Modelos",
-        xaxis_title="Data",
-        yaxis_title=var_y,
-        showlegend=True
-    )
-
-    st.plotly_chart(fig)
 
 varY = st.selectbox("Variável para previsão", session_state.data.columns)
 varX = st.multiselect("Lista de variáveis regressoras", session_state.data.columns)
@@ -1613,6 +1652,18 @@ if autovar:
     if session_state.data is not None:
         AUTOVAR(session_state.data,vardiff,varcut,var_lags, varY, varX)
 
+
+st.subheader('Betas', help="Calcula e plota Betas entre ativos selecionados", divider='rainbow')			
+
+
+
+colunas_adj_close = [col for col in session_state.data.columns if col.startswith('Adj Close')]
+
+betas = st.multiselect("Colunas:", colunas_adj_close)
+calcular_betas = st.button("calcular betas")
+if calcular_betas:
+	if session_state.data is not None:
+		gerar_betas(session_state.data, betas)
 
 st.subheader('Chat', help="Deixe uma mensagem", divider='rainbow')			
 
