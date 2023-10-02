@@ -10,6 +10,7 @@ from openpyxl import Workbook
 from math import sqrt
 
 
+
 ## importação de bibliotecas de plotagem de visualziação de dados
 import seaborn as sns
 import matplotlib.pyplot as plt
@@ -39,11 +40,14 @@ from sklearn.impute import SimpleImputer
 
 # Modelos de séries temporais
 from statsmodels.tsa.statespace.sarimax import SARIMAX
+from statsmodels.tsa.stattools import grangercausalitytests
 from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_error, mean_absolute_percentage_error
-from itertools import product
+from itertools import product, combinations
 from statsmodels.tsa.stattools import adfuller
 from statsmodels.tsa.vector_ar.vecm import coint_johansen
 import pmdarima as pm
+from statsmodels.tsa.api import VAR
+
 
 
 # demais modelos
@@ -583,7 +587,7 @@ def my_auto_arima(cut, df,variavel,teste,d, max_p,max_q,seasonal,m):
 @st.cache_data
 def SARIMALL(cut, df, variavel, stationarity, p, d, q, P, D, Q, limite_combinacoes, lags, metric,variar_lag, n_plots):
 	filtered_df = df[variavel]
-	if filterd_df.isna().any().any():
+	if filtered_df.isna().any().any():
 		st.warning("Dados NaN encontrados. Por favor, processe o dataframe")
 		return
 
@@ -665,12 +669,64 @@ def SARIMALL(cut, df, variavel, stationarity, p, d, q, P, D, Q, limite_combinaco
 		st.dataframe(resultados_df)
 	return resultados_df
 
+def grangercausalitytests_trintinalia(df, y_column, max_lags, n, nc=0.05, x_column="ALL", VAR_SELECT=False):
+    # Aplicar a diferenciação e remoção de NaNs fora do loop
+    for _ in range(n):
+        df = df.diff()
+        df.dropna(inplace=True)
+
+    p_values_df = pd.DataFrame(columns=['Y', 'X', 'Lag', 'P-valor', 'Granger Causa'])
+    granger_causa_dict = {}
+
+    if x_column == "ALL":
+        x_columns = [col_name for col_name in df.columns if col_name != y_column]
+    else:
+        x_columns = x_column
+
+    for col_name_X in x_columns:
+        cg_df = df[[y_column, col_name_X]]
+        result = grangercausalitytests(cg_df, max_lags, verbose=False)
+        p_vals = [result[lag][0]['ssr_ftest'][1] for lag in range(1, max_lags + 1)]
+        temp_df = pd.DataFrame({
+            'Y': y_column,
+            'X': col_name_X,
+            'Lag': list(range(1, max_lags + 1)),
+            'P-valor': p_vals,
+            'Granger Causa': [f"{y_column} é granger causado por {col_name_X}" if p < nc
+                             else f"{y_column} não é granger causado por {col_name_X}" for p in p_vals]
+        })
+
+        p_values_df = pd.concat([p_values_df, temp_df], ignore_index=True)
+    
+    df_filtrado = p_values_df[p_values_df['P-valor'] < nc]
+
+    df_lags = pd.DataFrame(columns=['X', 'Lags'])
+    variaveis_x = df_filtrado['X'].unique()
+
+    for x in variaveis_x:
+        df_x = df_filtrado[df_filtrado['X'] == x]
+        lags = ', '.join([f'{x}' for x in df_x['Lag'].astype(str)])
+        df_lags.loc[len(df_lags)] = [x, lags]
+
+    df_lags = df_lags.rename(columns={'X': f'Granger Causam {y_column}'})
+    g1, g2 = st.columns(2)
+    with g1:
+        st.dataframe(df_lags)
+    with g2:
+        st.dataframe(p_values_df)
+    
+    dfs = pd.DataFrame()
+    if VAR_SELECT:
+        colunas_filtradas = [y_column] + list(df_lags[f'Granger Causam {y_column}'])
+        session_state.data = session_state.data[colunas_filtradas]
+
+    return session_state.data 
+
 ## Configuração da página e do título
 st.set_page_config(page_title='Monografia Guilherme Ziegler', layout = 'wide', initial_sidebar_state = 'auto')
 
 st.title("Processador de séries temporais")
 
-#link = 'https://drive.google.com/uc?id=1--gZBE88vsqMTQKIv3sdLreqWlZqmd67' 
 link = 'https://github.com/GuilhermeZiegler/crazynomics/raw/master/dados.parquet'
 
 st.subheader('Download da base histórica', help='Você deve clicar no botão carregue a base para que o arquivo parquet seja lido',divider='rainbow')
@@ -880,96 +936,246 @@ with assets:
 					}
 
 	lista_empresas = {
-					'AGRO3': 'AGRO3.SA',
-					'ALPARGATAS': 'ALPA4.SA',
-					'AMBEV S/A': 'ABEV3.SA',
-					'AMERICANAS': 'AMER3.SA',
-					'ASML Holding': 'ASML34.SA',
-					'ASSAI': 'ASAI3.SA',
-					'AZUL': 'AZUL4.SA',
-					'B3': 'B3SA3.SA',
-					'BANCO PAN': 'BPAN4.SA',
-					'BBSEGURIDADE': 'BBSE3.SA',
-					'BRADESCO': 'BBDC4.SA',
-					'BRADESPAR': 'BRAP4.SA',
-					'BRASIL': 'BBAS3.SA',
-					'BRASKEM': 'BRKM5.SA',
-					'BRF': 'BRFS3.SA',
-					'BRF SA': 'BRFS3.SA',
-					'BTGP BANCO': 'BPAC11.SA',
-					'Bemobi Mobile Tech SA': 'BMOB3.SA',
-					'Broadcom Inc.': 'AVGO34.SA',
-					'CARREFOUR BR': 'CRFB3.SA',
-					'CCR SA': 'CCRO3.SA',
-					'CEMIG': 'CMIG4.SA',
-					'CIELO': 'CIEL3.SA',
-					'COGNA ON': 'COGN3.SA',
-					'COPEL': 'CPLE6.SA',
-					'COSAN': 'CSAN3.SA',
-					'CPFL ENERGIA': 'CPFE3.SA',
-					'CVC BRASIL': 'CVCB3.SA',
-					'CYRELA REALT': 'CYRE3.SA',
-					'DEXCO': 'DXCO3.SA',
-					'Direcional Engenharia S.A.': 'DIRR3.SA',
-					'ECORODOVIAS': 'ECOR3.SA',
-					'ELETROBRAS': 'ELET6.SA',
-					'EMBRAER': 'EMBR3.SA',
-					'ENERGIAS BR': 'ENBR3.SA',
-					'ENERGISA': 'ENGI11.SA',
-					'ENEVA': 'ENEV3.SA',
-					'ENGIE BRASIL': 'EGIE3.SA',
-					'EQUATORIAL': 'EQTL3.SA',
-					'EZTEC': 'EZTC3.SA',
-					'Enjuei': 'ENJU3.SA',
-					'FLEURY': 'FLRY3.SA',
-					'GERDAU': 'GGBR4.SA',
-					'GERDAU MET': 'GOAU4.SA',
-					'GOL': 'GOLL4.SA',
-					'GRUPO NATURA': 'NTCO3.SA',
-					'HAPVIDA': 'HAPV3.SA',
-					'HYPERA': 'HYPE3.SA',
-					'IRBBRASIL RE': 'IRBR3.SA',
-					'ITAUSA': 'ITSA4.SA',
-					'ITAUUNIBANCO': 'ITUB4.SA',
-					'JBS': 'JBSS3.SA',
-					'JHSF PART': 'JHSF3.SA',
-					'KLABIN S/A': 'KLBN11.SA',
-					'LOCALIZA': 'RENT3.SA',
-					'LOCAWEB': 'LWSA3.SA',
-					'LOJAS RENNER': 'LREN3.SA',
-					'M. Dias Branco': 'MDIA3.SA',
-					'MAGAZ LUIZA': 'MGLU3.SA',
-					'MARFRIG': 'MRFG3.SA',
-					'MELIUZ': 'CASH3.SA',
-					'MINERVA': 'BEEF3.SA',
-					'MRV': 'MRVE3.SA',
-					'MULTIPLAN': 'MULT3.SA',
-					'Microsoft BDR': 'MSFT34.SA',
-					'P.ACUCAR-CBD': 'PCAR3.SA',
-					'PETROBRAS': 'PETR4.SA',
-					'PETRORIO': 'PRIO3.SA',
-					'PETZ': 'PETZ3.SA',
-					'Plascar Participacoes Industriais SA': 'PLAS3.SA',
-					'QUALICORP': 'QUAL3.SA',
-					'RAIADROGASIL': 'RADL3.SA',
-					'REDE D OR': 'RDOR3.SA',
-					'RUMO S.A.': 'RAIL3.SA',
-					'SABESP': 'SBSP3.SA',
-					'SANTANDER BR': 'SANB11.SA',
-					'SID NACIONAL': 'CSNA3.SA',
-					'SUZANO S.A.': 'SUZB3.SA',
-					'TAESA': 'TAEE11.SA',
-					'TELEF BRASIL': 'VIVT3.SA',
-					'TIM': 'TIMS3.SA',
-					'TOTVS': 'TOTS3.SA',
-					'Taiwan Semiconduc Manufact Co Lt Bdr': 'TSMC34.SA',
-					'ULTRAPAR': 'UGPA3.SA',
-					'USIMINAS': 'USIM5.SA',
-					'VALE': 'VALE3.SA',
-					'VIA': 'VIIA3.SA',
-					'WEG': 'WEGE3.SA',
-					'YDUQS PART': 'YDUQ3.SA'
-					}
+		"3M": "MMMC34.SA",
+		"Abbott Laboratories": "ABTT34.SA",
+		"AES Brasil": "AESB3.SA",
+		"AF Invest": "AFHI11.SA",
+		"Afluente T": "AFLT3.SA",
+		"Agribrasil": "GRAO3.SA",
+		"AgroGalaxy": "AGXY3.SA",
+		"Aliansce Sonae": "ALSO3.SA",
+		"Alliar": "AALR3.SA",
+		"Alper": "APER3.SA",
+		"Alphabet": "GOGL35.SA",
+		"Alupar Investimento": "ALUP4.SA",
+		"Amc Entert H": "A2MC34.SA",
+		"American Express": "AXPB34.SA",
+		"Apple": "AAPL34.SA",
+		"Arcelor": "ARMT34.SA",
+		"Att Inc": "ATTB34.SA",
+		"Att Inc": "ATTB34.SA",
+		"Auren Energia": "AURE3.SA",
+		"Avalara Inc": "A2VL34.SA",
+		"Avon": "AVON34.SA",
+		"Banco do Brasil": "BBAS11.SA",
+		"Banco Inter": "BIDI3.SA",
+		"Banco Mercantil de Investimentos": "BMIN3.SA",
+		"Banco Pan": "BPAN4.SA",
+		"Bank America": "BOAC34.SA",
+		"Banpara": "BPAR3.SA",
+		"Banrisul": "BRSR3.SA",
+		"Battistella": "BTTL3.SA",
+		"Baumer": "BALM3.SA",
+		"BB Seguridade": "BBSE3.SA",
+		"Beyond Meat": "B2YN34.SA",
+		"Biomm": "BIOM3.SA",
+		"Biotoscana": "GBIO33.SA",
+		"BMG": "BMGB11.SA",
+		"Brasil Brokers": "BBRK3.SA",
+		"brMalls": "BRML3.SA",
+		"BTG S&P 500 CI": "SPXB11.SA",
+		"BTG SMLL CAPCI": "SMAB11.SA",
+		"Caesars Entt": "C2ZR34.SA",
+		"Caixa Agências": "CXAG11.SA",
+		"Camden Prop": "C2PT34.SA",
+		"CAMIL": "CAML3.SA",
+		"Carrefour": "CRFB3.SA",
+		"CARTESIA FIICI": "CACR11.SA",
+		"Casan": "CASN4.SA",
+		"CEB": "CEBR6.SA",
+		"CEEE-D": "CEED4.SA",
+		"Ceee-gt": "EEEL4.SA",
+		"CEG": "CEGR3.SA",
+		"Celesc": "CLSC4.SA",
+		"Celpe": "CEPE6.SA",
+		"Celulose Irani": "RANI3.SA",
+		"Cemig": "CMIG4.SA",
+		"CESP": "CESP6.SA",
+		"Chevron": "CHVX34.SA",
+		"Churchill Dw": "C2HD34.SA",
+		"Cisco": "CSCO34.SA",
+		"Citigroup": "CTGP34.SA",
+		"ClearSale": "CLSA3.SA",
+		"Coca-Cola": "COCA34.SA",
+		"Coelce": "COCE6.SA",
+		"Coinbase Glob": "C2OI34.SA",
+		"Colgate": "COLG34.SA",
+		"Comgás": "CGAS3.SA",
+		"ConocoPhillips": "COPH34.SA",
+		"COPEL UNT N2": "CPLE11.SA",
+		"Copel": "CPLE6.SA",
+		"CPFL Energia": "CPFE3.SA",
+		"CSN": "CSNA3.SA",
+		"CSU CardSyst": "CARD3.SA",
+		"Cyrusone Inc": "C2ON34.SA",
+		"Dexco": "DXCO3.SA",
+		"Dexxos Part": "DEXP3.SA",
+		"Dimed": "PNVL3.SA",
+		"Dommo": "DMMO3.SA",
+		"Doordash Inc": "D2AS34.SA",
+		"Draftkings": "D2KN34.SA",
+		"eBay": "EBAY34.SA",
+		"Enauta Part": "ENAT3.SA",
+		"Energisa MT": "ENMT3.SA",
+		"Engie Brasil": "EGIE3.SA",
+		"EQI RECECI": "EQIR11.SA",
+		"Eucatex": "EUCA4.SA",
+		"Exxon Mobil": "EXXO34.SA",
+		"Ferbasa": "FESA4.SA",
+		"FIAGRO JGP CI": "JGPX11.SA",
+		"FIAGRO RIZA CI": "RZAG11.SA",
+		"FII BRIO ME CI": "BIME11.SA",
+		"FII CYRELA CI ES": "CYCR11.SA",
+		"FII GTIS LG": "GTLG11.SA",
+		"FII HUSI CI ES": "HUSI11.SA",
+		"FII JS A FINCI": "JSAF11.SA",
+		"FII MORE CRICI ER": "MORC11.SA",
+		"FII PLUR URBCI": "PURB11.SA",
+		"FII ROOFTOPICI": "ROOF11.SA",
+		"Fleury": "FLRY3.SA",
+		"Freeport": "FCXO34.SA",
+		"FT CLOUD CPT": "BKYY39.SA",
+		"FT DJ INTERN": "BFDN39.SA",
+		"FT EQ OPPORT": "BFPX39.SA",
+		"FT HCARE ALPH DRN": "BFXH39.SA",
+		"FT INTL EQ OP": "BFPI39.SA",
+		"FT MOR DV LEA": "BFDL39.SA",
+		"FT NASD CYBER": "BCIR39.SA",
+		"FT NASD100 EQ": "BQQW39.SA",
+		"FT NASD100 TC": "BQTC39.SA",
+		"FT NAT GAS": "BFCG39.SA",
+		"FT NYSE BIOT DRN": "BFBI39.SA",
+		"FT RISI DIVID": "BFDA39.SA",
+		"FT TECH ALPH": "BFTA39.SA",
+		"G2D Investments": "G2DI33.SA",
+		"GE": "GEOO34.SA",
+		"General Shopping": "GSHP3.SA",
+		"Ger Paranapanema": "GEPA4.SA",
+		"Gerdau": "GOAU4.SA",
+		"Getnet": "GETT11.SA",
+		"Godaddy Inc": "G2DD34.SA",
+		"Goldman Sachs": "GSGI34.SA",
+		"Gradiente": "IGBR3.SA",
+		"Halliburton": "HALI34.SA",
+		"Honeywell": "HONB34.SA",
+		"HP Company": "HPQB34.SA",
+		"Hypera Pharma": "HYPE3.SA",
+		"IBM": "IBMB34.SA",
+		"Iguatemi S.A.": "IGTI3.SA",
+		"Infracommerce": "IFCM3.SA",
+		"Instituto Hermes Pardini SA": "PARD3.SA",
+		"Intel": "ITLC34.SA",
+		"INVESTO ALUG": "ALUG11.SA",
+		"INVESTO USTK": "USTK11.SA",
+		"INVESTO WRLD": "WRLD11.SA",
+		"IRB Brasil RE": "IRBR3.SA",
+		"ISA CTEEP": "TRPL4.SA",
+		"ISHARES CSMO": "CSMO.SA",
+		"ISHARES MILA": "MILA.SA",
+		"Itaú Unibanco": "ITUB4.SA",
+		"Itaúsa": "ITSA4.SA",
+		"JBS": "JBSS3.SA",
+		"Johnson": "JNJB34.SA",
+		"JPMorgan": "JPMC34.SA",
+		"Kingsoft Chl": "K2CG34.SA",
+		"Klabin S/A": "KLBN11.SA",
+		"Linx": "LINX3.SA",
+		"Livetech": "LVTC3.SA",
+		"Locaweb": "LWSA3.SA",
+		"Log": "LOGG3.SA",
+		"LPS Brasil": "LPSB3.SA",
+		"Marfrig": "MRFG3.SA",
+		"Mastercard": "MSCD34.SA",
+		"MDiasBranco": "MDIA3.SA",
+		"Medical P Tr": "M2PW34.SA",
+		"Mercantil do Brasil Financeira": "MERC4.SA",
+		"Merck": "MRCK34.SA",
+		"Microsoft": "MSFT34.SA",
+		"Minerva": "BEEF3.SA",
+		"MMX Mineração": "MMXM3.SA",
+		"Morgan Stanley": "MSBR34.SA",
+		"Msciglmivolf": "BCWV39.SA",
+		"Multiplan": "MULT3.SA",
+		"Natura": "NTCO3.SA",
+		"Neoenergia": "NEOE3.SA",
+		"Nu Holdings": "NUBR33.SA",
+		"Nu Renda Ibov Smart Dividendos (NDIV11)": "NDIV11.SA",
+		"OdontoPrev": "ODPV3.SA",
+		"OI": "OIBR4.SA",
+		"Omega Energia": "MEGA3.SA",
+		"Oncoclínicas": "ONCO3.SA",
+		"Oracle": "ORCL34.SA",
+		"OSX Brasil": "OSXB3.SA",
+		"Ourofino S/A": "OFSA3.SA",
+		"Padtec": "PDTC3.SA",
+		"Pão de Açúcar": "PCAR3.SA",
+		"Paranapanema": "PMAM3.SA",
+		"Pepsi": "PEPB34.SA",
+		"Petrobras": "PETR4.SA",
+		"PetroRecôncavo Geral SA": "RECV3.SA",
+		"PETRORIO": "PRIO3.SA",
+		"Pfizer": "PFIZ34.SA",
+		"Porto Seguro": "PSSA3.SA",
+		"PPLA": "PPLA11.SA",
+		"Privalia": "PRVA3.SA",
+		"Procter Gamble": "PGCO34.SA",
+		"Proctor Gamble": "PGCO34.SA",
+		"Qualcomm": "QCOM34.SA",
+		"Qualicorp": "QUAL3.SA",
+		"RD": "RADL3.SA",
+		"Renova": "RNEW4.SA",
+		"Rio Bravo": "RBIV11.SA",
+		"Sabesp": "SBSP3.SA",
+		"Sanepar": "SAPR4.SA",
+		"Santander BR": "SANB11.SA",
+		"Sao Carlos": "SCAR3.SA",
+		"São Martinho": "SMTO3.SA",
+		"Schlumberger": "SLBG34.SA",
+		"Sea Ltd": "S2EA34.SA",
+		"Shopify Inc": "S2HO34.SA",
+		"Smart Fit": "SMFT3.SA",
+		"Snowflake": "S2NW34.SA",
+		"Sp500 Value": "BIVE39.SA",
+		"Sp500growth": "BIVW39.SA",
+		"Square Inc": "S2QU34.SA",
+		"Squarespace": "S2QS34.SA",
+		"Starbucks": "SBUB34.SA",
+		"STONE CO": "STOC31.SA",
+		"Store Capital": "S2TO34.SA",
+		"Sun Commun": "S2UI34.SA",
+		"Suzano Holding": "NEMO6.SA",
+		"Suzano Papel": "SUZB3.SA",
+		"SYN Prop Tech": "SYNE3.SA",
+		"Taesa": "TAEE11.SA",
+		"Teladochealt": "T2DH34.SA",
+		"Telebras": "TELB4.SA",
+		"Telefônica Brasil S.A": "VIVT3.SA",
+		"Tellus Desenvolvimento Logístico": "TELD11.SA",
+		"Terra Santa Agro SA": "LAND3.SA",
+		"Tim Participações": "TIMS3.SA",
+		"Totvs": "TOTS3.SA",
+		"Trade Desk": "T2TD34.SA",
+		"TradersClub": "TRAD3.SA",
+		"Tronox": "CRPG6.SA",
+		"Uipath Inc": "P2AT34.SA",
+		"Ultrapar": "UGPA3.SA",
+		"Unipar": "UNIP6.SA",
+		"Unity Softwr": "U2ST34.SA",
+		"Vale": "VALE5.SA",
+		"Verizon": "VERZ34.SA",
+		"Visa": "VISA34.SA",
+		"Vivara": "VIVA3.SA",
+		"Viveo": "VVEO3.SA",
+		"Votorantim Asset Management": "VSEC11.SA",
+		"Walmart": "WALM34.SA",
+		"Wells Fargo": "WFCO34.SA",
+		"West Pharma": "W2ST34.SA",
+		"Wilson Sons": "PORT3.SA",
+		"Xerox": "XRXB34.SA",
+		"XP Inc": "XPBR31.SA",
+		"Zynga Inc": "Z2NG34.SA",
+		}
+
 
 	st.info("Ativos")
 	default_empresas = list(empresas_mono.keys())
@@ -1221,7 +1427,7 @@ with p2:
 				st.write(result_df)
 
 			
-st.subheader('Verificador de  Cointegração', help="Testar Cointegração: Verifica cointegração por janela de tempo. Encontrar Coint: descobre quais combinações de ativos estão cointegradas para um intervalo de tempo e um tamanho ótimo. ATENÇÃO: Dados precisam estar com o index de data. Caso venha do filtro, automaticamente estarão neste formto.", divider='rainbow')	
+st.subheader('Verificador de  Coinregração', help="Testar Cointegração: Verifica cointegração por janela de tempo. Encontrar Coint: descobre quais combinações de ativos estão cointegradas para um intervalo de tempo e um tamanho ótimo. ATENÇÃO: Dados precisam estar com o index de data. Caso venha do filtro, automaticamente estarão neste formto.", divider='rainbow')	
 	
 co1, co2 = st.columns(2)	
 with co1:
@@ -1301,7 +1507,114 @@ if sarimall:
 	if session_state.data is not None:
 		model = SARIMALL(cut2, session_state.data, variavel2,stationarity, p, d2, q, P, D, Q,limite_combinacoes,lags,metric,variar_lag, n_plots)
 
-st.subheader('Chat', help="Deixe uma mensagem", divider='rainbow')
+st.subheader("GRANGER CAUSALIDADE", help ="Identifica quais variáveis X granger causam variável de interesse Y para um número de lags máximo. É preciso garantir que as séries estejam estacionárias, portanto número de diferenciações aplica a difença no conjunto de dados passado, mas não verifica estacionariedade. Para isso, use a função make stationar. Se VAR_SELEC for configurado para True, dataframe será modificado para preservar as colunas que granger causam a variável de interesse. Para isso, use a função make stationary")	
+
+nc2 = st.selectbox("NCs:",[0.05,0.1, 0.01])
+n_diff = st.number_input("Número de Diferenciações", 0,10,step=1)
+mlags = st.number_input("Número de lags avaliados", 0,10,6,step=1)
+variavelY = st.selectbox("Variavel Granger Causada?", session_state.data.columns)
+op = opcoes = ["None"] + list(session_state.data.columns)
+variaveisX = st.multiselect("Granger Causa", op)
+VAR_SELECT = st.selectbox("Selecioanr Variáveis?", [False,True])
+
+granger_causalidade = st.button("Causalidade de Granger")
+
+if granger_causalidade:
+    if session_state.data is not None:
+        session_state.data = grangercausalitytests_trintinalia(session_state.data, variavelY, mlags, n_diff, nc2, variaveisX, VAR_SELECT)
+
+st.subheader("AUTOVARVEC", help ="Utiliza análise combinatória para encontrar o VARVEC otimizado por parametros de previsão. Usa função Verificador de Coinregração. Se houver cointegração entre as séries configura um modelo VEC. Caso não haja cointegração, configura um modelo VAR combinatório que testa as n combinações para as colunas regressoras par a par")	
+
+def AUTOVAR(df, vardiff, cut, max_lags, var_y, x_columns):
+    variables = [var_y] + x_columns 
+    df_combo = []
+    for _ in range(vardiff):
+        df = df.diff()
+        df.dropna(inplace=True)
+    for r in range(1, len(variables) + 1):
+        combos = combinations(variables, r)
+        for combo in combos:
+            if combo[0] == var_y and len(combo) > 1:
+                df_combo.append(combo)  # Remova list() aqui
+    st.write(f"Foram gerados {len(df_combo)} conjuntos para o modelo VAR")
+    model_colnames_list = []
+    lags_list = []
+    rmse_list = []
+    posicao_combinacao_list = []
+    predicted_dfs = []
+    train_dfs = []
+    train_size  = int(len(df) * (1 - cut))
+    
+    for posicao, df_combinacao in enumerate(df_combo):
+        if all(col in df.columns for col in df_combinacao):
+            VARn_combinacao = df[list(df_combinacao)]
+            
+            rmse_dict = {}
+            
+            for k in range(1, max_lags + 1):
+                train_df = VARn_combinacao.iloc[:train_size, :]
+                test_df = VARn_combinacao.iloc[train_size:, :]
+                model = VAR(train_df)
+                fitted_model = model.fit(maxlags=k)
+                
+                n_forecast = len(test_df)
+                forecast = fitted_model.forecast(y=test_df.values, steps=n_forecast)
+                
+                predicted_df = pd.DataFrame(forecast, columns=test_df.columns, index=test_df.index)
+                rmse = sqrt(mean_squared_error(test_df[var_y], predicted_df[var_y]))
+                
+                rmse_dict[k] = rmse
+        
+            lag_otimo = min(rmse_dict, key=rmse_dict.get)
+            modelo_name = f"Modelo_lag{lag_otimo}"
+            concatenated_colnames = " ".join(train_df.columns)
+            
+            model_colnames_list.append(concatenated_colnames)
+            lags_list.append(lag_otimo)
+            rmse_list.append(rmse_dict[lag_otimo])
+            posicao_combinacao_list.append(posicao)
+            train_dfs.append(train_df)
+            predicted_dfs.append(predicted_df)
+    
+    df_resultante = pd.DataFrame({
+        'model_colnames': model_colnames_list,
+        'Lags': lags_list,
+        'RMSE': rmse_list,
+        'posicao_da_combinacao': posicao_combinacao_list})
+    df_resultante = df_resultante.sort_values(by="RMSE")
+    st.dataframe(df_resultante)
+    
+# Plotar todas as previsões no mesmo gráfico com Plotly Express
+    fig = px.line()
+    fig.add_scatter(x=train_df.index, y=train_df[var_y], mode='lines', name='Treinamento')
+    fig.add_scatter(x=test_df.index, y=test_df[var_y], mode='lines', name='Teste')
+
+    for idx, row in df_resultante.head(10).iterrows():  # Plotar as previsões dos 10 melhores modelos
+        lag = row['Lags']
+        predicted_df = predicted_dfs[row['posicao_da_combinacao']]
+        fig.add_scatter(x=predicted_df.index, y=predicted_df[var_y], mode='lines', name=f'Previsão (Lags={lag})')
+
+    fig.update_layout(
+        title="Previsões dos 10 Melhores Modelos",
+        xaxis_title="Data",
+        yaxis_title=var_y,
+        showlegend=True
+    )
+
+    st.plotly_chart(fig)
+
+varY = st.selectbox("Variável para previsão", session_state.data.columns)
+varX = st.multiselect("Lista de variáveis regressoras", session_state.data.columns)
+vardiff = st.number_input("Diferenciações", 0,10,step=1)
+varcut = st.number_input("split treinamento e teste:", 0.0, 1.0, 0.25, step=0.01)
+var_lags = st.number_input("Var Lags:", 1, 100, 6, step=1)
+autovar = st.button("AutoVAR")
+if autovar:
+    if session_state.data is not None:
+        AUTOVAR(session_state.data,vardiff,varcut,var_lags, varY, varX)
+
+
+st.subheader('Chat', help="Deixe uma mensagem", divider='rainbow')			
 
 if "messages" not in st.session_state:
     st.session_state.messages = load_chat_history()
