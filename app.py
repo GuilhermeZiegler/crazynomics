@@ -9,8 +9,6 @@ from datetime import timedelta, datetime, time
 from openpyxl import Workbook
 from math import sqrt
 
-
-
 ## importação de bibliotecas de plotagem de visualziação de dados
 import seaborn as sns
 import matplotlib.pyplot as plt
@@ -214,6 +212,10 @@ def read_parquet_file():
     buffer = io.BytesIO(response.content)
     df = pd.read_parquet(buffer)
     st.write('Tamanho total: ', df.shape)
+    return df
+
+def read_excel_file(excel):
+    df = read_excel(excel)
     return df
 
 def criar_variaveis(dfs, variaveis_selecionadas):
@@ -866,7 +868,7 @@ if st.button('Carregue a base'):
 excel_file = st.file_uploader("Selecione um arquivo em excel para leitura", type=["xlsx", "xls"])
 ler_excel = st.button("Carregar Excel")
 if ler_excel and excel_file is not None:
-	session_state.data = pd.read_excel(excel_file)
+	session_state.data = read_excel_file(excel_file)
 	st.write("Excel carregado com sucesso")
 else: 
 	st.warning('É preciso subir um arquivo válido em "browse files"')
