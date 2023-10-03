@@ -815,21 +815,24 @@ def gerar_betas(df, colunas):
                     beta = model.params[1]  # Coeficiente beta (o índice 1 representa a variável independente)
                     beta_df.at[col1, col2] = beta
     beta_df.fillna(1, inplace = True)
-    # Criação do heatmap
+     # Remoção da parte superior da diagonal
+    for i in range(len(colunas)):
+        for j in range(i + 1, len(colunas)):
+            beta_df.iloc[i, j] = None
+
+    # Criação do heatmap triangular
     fig = px.imshow(
         beta_df,
         color_continuous_scale=[[0, 'red'], [0.5, 'white'], [1, 'blue']],
         zmin=-2,
-        zmax=2
-    )
-    fig.update_xaxes(tickvals=list(range(len(beta_df.index))), ticktext=beta_df.index)
-    fig.update_yaxes(tickvals=list(range(len(beta_df.columns))), ticktext=beta_df.columns)
-    fig.update_layout(
+        zmax=2,
+        labels=dict(x="Ativo", y="Ativo", color="Coeficiente Beta"),
+        x=colunas,
+        y=colunas,
         title="Heatmap Dinâmico dos Coeficientes Beta",
-        width=1000,  # Defina a largura da figura
-        height=800  # Defina a altura da figura
-    )
-
+        width=1000,
+        height=800)
+   
     st.plotly_chart(fig)	
 
 ## Configuração da página e do título
