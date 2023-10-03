@@ -215,7 +215,7 @@ def read_parquet_file():
     return df
 
 def read_excel_file(excel):
-    df = read_excel(excel)
+    df = pd.read_excel(excel)
     return df
 
 def criar_variaveis(dfs, variaveis_selecionadas):
