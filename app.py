@@ -547,7 +547,6 @@ def coint_window(df, offset_type, window_size, approach, variavel_y, variaveis_c
 
 @st.cache_data
 def my_auto_arima(cut, df,variavel,teste,d, max_p,max_q,seasonal,m):
-	ar1, ar2 = st.columns([1,2])
 	filterd_df = df[variavel]
 	if filterd_df.isna().any().any():
 		st.warning("Dados NaN encontrados. Por favor, processe o dataframe")
@@ -578,14 +577,12 @@ def my_auto_arima(cut, df,variavel,teste,d, max_p,max_q,seasonal,m):
 	forecast_df.index = test_df.index
 	df = df[[variavel]]
 	df = df.merge(forecast_df, left_index=True, right_index=True, how ="outer")
-	with ar1:
-		with st.container():
-			st.write(model.summary())
+	with st.container():
+		st.write(model.summary())
 	fig = px.line(df, x = df.index, y=df.columns,
 						 title ="AutoArima") 
-	with ar2:
-		with st.container():
-			st.plotly_chart(fig)
+	with st.container():
+		st.plotly_chart(fig)
 
 def SARIMALL(cut, df, variavel, stationarity, p, d, q, P, D, Q, limite_combinacoes, lags, metric,variar_lag, n_plots):
 	filtered_df = df[variavel]
