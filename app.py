@@ -819,7 +819,6 @@ def gerar_betas(df, colunas):
     for i in range(len(colunas)):
         for j in range(i + 1, len(colunas)):
             beta_df.iloc[i, j] = None
-
     # Criação do heatmap triangular
     fig = px.imshow(
         beta_df,
