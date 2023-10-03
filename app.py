@@ -613,7 +613,6 @@ def SARIMALL(cut, df, variavel, stationarity, p, d, q, P, D, Q, limite_combinaco
 		lags_values = list(range(1, lags + 1)) 
 	param_ranges.append(lags_values)
 	param_combinations = list(product(*param_ranges))
-	coluna1, coluna2 = st.columns(2)
 	resultados_df = pd.DataFrame(columns=["p", "d", "q", "P", "D", "Q", "lags", "aic","bic","rmse","mse","mae","mape"])
 	st.write("Total de modelos para o otimizador: ", len(param_combinations))
 	for params in param_combinations:
@@ -659,13 +658,11 @@ def SARIMALL(cut, df, variavel, stationarity, p, d, q, P, D, Q, limite_combinaco
 		df_completo = pd.DataFrame(filtered_df).merge(df_previsoes, left_index=True, right_index=True, how='outer')
 		fig = px.line(df_completo, x = df_completo.index, y=df_completo.columns,
 						  title ="SARIMALL")
-		with coluna2:
-			st.plotly_chart(fig)
+		st.plotly_chart(fig)
 	else: 
 		st.write("Reduza n_plots para convergir com a quantidade de modelos otimizados")
-	with coluna1:
-		st.markdown("Resultados Otimizados")
-		st.dataframe(resultados_df)
+	st.markdown("Resultados Otimizados")
+	st.dataframe(resultados_df)
 	return resultados_df
 
 def grangercausalitytests_trintinalia(df, y_column, max_lags, n, nc=0.05, x_column="ALL", VAR_SELECT=False):
