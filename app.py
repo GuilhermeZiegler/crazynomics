@@ -1416,8 +1416,7 @@ with b2:
 	indice_data = st.selectbox("Selecione a coluna de data:", colunasdata)
 	indexar_data = st.button("Aplicar indice de data")
 	if indexar_data:
-		indice_data =  pd.to_datetime(indice_data)
-		session_state.data.index = indice_data, inplace = True
+		session_state.data.set_index([indice_data], drop=True, inplace = True)
 
 ## bloco de corte por volume por percentual de zeros
 #corte_volume = st.sidebar.slider('Remove Volume_ para percentual de 0 na coluna', 0, 100, 100, step=1)
