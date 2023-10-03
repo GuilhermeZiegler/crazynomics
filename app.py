@@ -1410,7 +1410,7 @@ with b1:
 	    session_state.data = read_parquet_file()
 	    session_state.data = filtra_dados(session_state.data, merged_df, start_date, end_date)
 	else:
-	    st.warning('Para carregar do excel: clique no botão carregar excel. Neste caso, não há como usar o filtra dados')
+	    st.warning('Para carregar do excel: clique no botão carregar excel. É preciso trabalhar com um df indexado ou indexar a coluna de data!')
 with b2:
 	colunasdata =  ["None"] + list(session_state.data.columns)
 	indice_data = st.selectbox("Selecione a coluna de data:", colunasdata)
