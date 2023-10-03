@@ -1412,7 +1412,7 @@ with b1:
 	else:
 	    st.warning('Para carregar do excel: clique no botão carregar excel. Neste caso, não há como usar o filtra dados')
 with b2:
-	colunasdata = None + session_state.data.columns
+	colunasdata =  ["None"] + list(session_state.data.columns)
 	indice_data = st.selectbox("Selecione a coluna de data:", colunasdata)
 	indexar_data = st.button("Aplicar indice Data")
 	if indexar_data:
@@ -1633,7 +1633,7 @@ nc2 = st.selectbox("NCs:",[0.05,0.1, 0.01])
 n_diff = st.number_input("Número de Diferenciações", 0,10,step=1)
 mlags = st.number_input("Número de lags avaliados", 0,10,6,step=1)
 variavelY = st.selectbox("Variavel Granger Causada?", session_state.data.columns)
-op = opcoes = ["None"] + list(session_state.data.columns)
+op =  ["None"] + list(session_state.data.columns)
 variaveisX = st.multiselect("Granger Causa", op)
 VAR_SELECT = st.selectbox("Selecioanr Variáveis?", [False,True])
 
