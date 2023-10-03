@@ -1416,6 +1416,7 @@ with b2:
 	indice_data = st.selectbox("Selecione a coluna de data:", colunasdata)
 	indexar_data = st.button("Aplicar indice Data")
 	if indexar_data:
+		indice_data =  pd.to_datetime(indice_data)
 		session_state.data.index = indice_data
 
 ## bloco de corte por volume por percentual de zeros
