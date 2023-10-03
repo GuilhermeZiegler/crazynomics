@@ -1404,12 +1404,19 @@ manter_colunas = st.sidebar.button("Manter Colunas")
 if manter_colunas:
 	if session_state.data is not None:
 		session_state.data = guardar_coluna(session_state.data,colunas_keep)
-		
-if st.button("Filtrar Dados"):
-    session_state.data = read_parquet_file()
-    session_state.data = filtra_dados(session_state.data, merged_df, start_date, end_date)
-else:
-    st.warning('Para carregar do excel: clique no botão carregar excel. Neste caso, não há como usar o filtra dados')
+b1, b2 = st.columns(2)
+with b1:
+	if st.button("Filtrar Dados"):
+	    session_state.data = read_parquet_file()
+	    session_state.data = filtra_dados(session_state.data, merged_df, start_date, end_date)
+	else:
+	    st.warning('Para carregar do excel: clique no botão carregar excel. Neste caso, não há como usar o filtra dados')
+with b2:
+	colunasdata = None + session_state.data.columns
+	indice_data = st.selectbox("Selecione a coluna de data:", colunasdata)
+	indexar_data = st.button("Aplicar indice Data")
+	if indexar_data:
+		session_state.data.index = indice_data
 
 ## bloco de corte por volume por percentual de zeros
 #corte_volume = st.sidebar.slider('Remove Volume_ para percentual de 0 na coluna', 0, 100, 100, step=1)
