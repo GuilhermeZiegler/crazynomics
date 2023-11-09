@@ -256,9 +256,12 @@ def criar_variaveis(dfs, variaveis_selecionadas):
 
 
 def get_candle(dfs, list_of_dictionaries):
-    processed_columns = set()  # Usamos um conjunto para garantir que cada sufixo seja mantido apenas uma vez
+    processed_columns = set()
     for col in dfs.columns:
-        suffix = col.split('_')[-1]
+        if '_' in col:
+            suffix = col.split('_')[-1]
+        else:
+            suffix = col
         for dictionary in list_of_dictionaries:
             if suffix in dictionary:
                 processed_columns.add(suffix)
