@@ -1510,8 +1510,8 @@ with g2:
  	if gerar_candles:
 		candles_tickers = get_candle(session_state.data, [lista_indices, lista_empresas, moedas, lista_commodities])
 		selected_suffixes = st.multiselect("Selecione os sufixos:", candles_tickers)
+	
 	if st.button("Candlestick") and selected_suffixes:
-    	# Cria o gráfico de candlestick com base nos sufixos selecionados
 	candlechart =  candlestick_chart(session_state.data, selected_suffixes)
 	st.plotly_chart(candlechart)	
 			
