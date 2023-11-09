@@ -1506,13 +1506,14 @@ if grafico_linhas:
 					# Exiba o gráfico dentro do container
 				st.plotly_chart(fig)
 with g2:
-	grafico_candles = st.button("Gráfico candlestick")
-	candles_tickers = get_candle(session_state.data, [lista_indices, lista_empresas, moedas, lista_commodities])
-	selected_suffixes = st.multiselect("Selecione os sufixos:", candles_tickers)
-if grafico_candles and selected_suffixes:
-    # Cria o gráfico de candlestick com base nos sufixos selecionados
-	candle= candlestick_chart(session_state.data, selected_suffixes)
-	st.plotly_chart(candle)	
+	gerar_candles = st.button("Gerar Candles")
+ 	if gerar_candles:
+		candles_tickers = get_candle(session_state.data, [lista_indices, lista_empresas, moedas, lista_commodities])
+		selected_suffixes = st.multiselect("Selecione os sufixos:", candles_tickers)
+	if st.button("Candlestick") and selected_suffixes:
+    	# Cria o gráfico de candlestick com base nos sufixos selecionados
+	candlechart =  candlestick_chart(session_state.data, selected_suffixes)
+	st.plotly_chart(candlechart)	
 			
 st.subheader('Modelos de Séries Temporais', help="Você poderá verificar estacionariedade das variáveis escolhidas e aplicar SARIMA, VAR e VEC", divider='rainbow')
 
