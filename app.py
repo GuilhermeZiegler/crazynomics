@@ -1671,8 +1671,11 @@ if autovar:
 
 st.subheader('Betas', help="Calcula e plota Betas entre ativos selecionados", divider='rainbow')			
 
-colunas_adj_close = [col for col in session_state.data.columns if col.startswith('Adj Close')]
-
+try: 
+	colunas_adj_close = [col for col in session_state.data.columns if col.startswith('Adj Close')]
+except:
+	colunas_adj_close = "None"
+	
 betas = st.multiselect("Colunas:", colunas_adj_close)
 calcular_betas = st.button("calcular betas")
 if calcular_betas:
