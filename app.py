@@ -1465,7 +1465,6 @@ if session_state.data is not None:
 	st.write("DataFrame:")
 	st.dataframe(session_state.data)
 	st.write(session_state.data.shape)
-	candles_tickers = get_candle(session_state.data, [lista_indices, lista_empresas, moedas, lista_commodities])  
 
 baixar_excel = st.button("Baixar Excel")
 st.markdown('Pix para doações: guitziegler@gmail.com')
