@@ -1673,11 +1673,12 @@ st.subheader('Betas', help="Calcula e plota Betas entre ativos selecionados", di
 
 try: 
 	colunas_adj_close = [col for col in session_state.data.columns if col.startswith('Adj Close')]
-except:
-	colunas_adj_close = "None"
+	betas = st.multiselect("Colunas:", colunas_adj_close)
 	
-betas = st.multiselect("Colunas:", colunas_adj_close)
-calcular_betas = st.button("calcular betas")
+except:
+	pass
+	
+calcular_betas = st.button("calcular betas")	
 if calcular_betas:
 	if session_state.data is not None:
 		gerar_betas(session_state.data, betas)
