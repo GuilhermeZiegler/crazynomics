@@ -254,18 +254,27 @@ def criar_variaveis(dfs, variaveis_selecionadas):
                         dfs[f'Updown_{sufixo}'] = (dfs[f'Retorno_diario_{sufixo}'] > 0).astype(int)						
     return dfs
 
-
 def get_candle(dfs, list_of_dictionaries):
     processed_columns = set()
+
     for col in dfs.columns:
         if '_' in col:
             suffix = col.split('_')[-1]
         else:
             suffix = col
+
         for dictionary in list_of_dictionaries:
-            if suffix in dictionary:
-                processed_columns.add(suffix)
-                break
+            # Verificar se o argumento é iterável
+            if hasattr(dictionary, '__iter__'):
+                if suffix in dictionary:
+                    processed_columns.add(suffix)
+                    break
+            else:
+                # Lida com o caso em que o argumento não é iterável
+                if suffix == dictionary:
+                    processed_columns.add(suffix)
+                    break
+			
     return list(processed_columns)
 
 def candlestick_chart(dfs, selected_suffixes):
