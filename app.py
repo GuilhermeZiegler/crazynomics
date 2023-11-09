@@ -1507,10 +1507,10 @@ if grafico_linhas:
 				st.plotly_chart(fig)
 with g2:
 	gerar_candles = st.button("Gerar Candles")
- 	if gerar_candles:
+	if gerar_candles:
 		candles_tickers = get_candle(session_state.data, [lista_indices, lista_empresas, moedas, lista_commodities])
 		selected_suffixes = st.multiselect("Selecione os sufixos:", candles_tickers)
-	
+		
 	if st.button("Candlestick") and selected_suffixes:
 	candlechart =  candlestick_chart(session_state.data, selected_suffixes)
 	st.plotly_chart(candlechart)	
