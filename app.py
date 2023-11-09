@@ -1512,8 +1512,8 @@ with g2:
 		selected_suffixes = st.multiselect("Selecione os sufixos:", candles_tickers)
 		
 	if st.button("Candlestick") and selected_suffixes:
-	candlechart =  candlestick_chart(session_state.data, selected_suffixes)
-	st.plotly_chart(candlechart)	
+		candlechart =  candlestick_chart(session_state.data, selected_suffixes)
+		st.plotly_chart(candlechart)	
 			
 st.subheader('Modelos de Séries Temporais', help="Você poderá verificar estacionariedade das variáveis escolhidas e aplicar SARIMA, VAR e VEC", divider='rainbow')
 
