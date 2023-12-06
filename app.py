@@ -259,7 +259,7 @@ def candlestick_chart(dfs, selected_var):
                     name=var
                 )
 
-                traces.add(trace)
+                traces.add(trace.to_plotly_json())  # Convertendo para JSON antes de adicionar ao conjunto
 
     layout = go.Layout(
         title="Gráfico de Candlestick",
