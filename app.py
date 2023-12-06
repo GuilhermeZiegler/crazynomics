@@ -1404,6 +1404,10 @@ with b2:
 	if indexar_data:
 		session_state.data.set_index([indice_data], drop=True, inplace = True)
 
+min_max_scaler = st.sidebar.button("Deseja escalar os dados?", ['S', 'N'])
+	if min_max_scaler:
+		session_state.data = MinMaxScaler(session_state.data)
+
 ## bloco de corte por volume por percentual de zeros
 #corte_volume = st.sidebar.slider('Remove Volume_ para percentual de 0 na coluna', 0, 100, 100, step=1)
 #if st.sidebar.button("Cortar Volume"):
@@ -1469,6 +1473,7 @@ g1, g2 = st.columns(2)
 with g1:
 	grafico_linhas = st.button("Gráfico Linhas")
 	selected_columns = st.multiselect("Gráfico:", session_state.data.columns)
+	
 if grafico_linhas:
 	if session_state.data is not None:
 		if not selected_columns:
