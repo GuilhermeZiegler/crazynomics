@@ -529,7 +529,6 @@ def coint_window(df, offset_type, window_size, approach, variavel_y, variaveis_c
             data_inicio -= offset
 			
     combined_result = pd.concat(result, ignore_index=True)
-    
     return combined_result
 
 @st.cache_data
@@ -1384,9 +1383,10 @@ limpeza_pesada = st.sidebar.multiselect('Remova colunas TIPO_',prefixes)
 if st.sidebar.button("Remover Colunas"):
 	if session_state.data is not None:
 		session_state.data = heavycleaning(session_state.data, limpeza_pesada)
-	
-colunas_keep = st.sidebar.multiselect('Selecione Colunas:', session_state.data.columns)
-manter_colunas = st.sidebar.button("Manter Colunas")
+
+if session_state.data.colums is not None:
+	colunas_keep = st.sidebar.multiselect('Selecione Colunas:', session_state.data.columns)
+	manter_colunas = st.sidebar.button("Manter Colunas")
 if manter_colunas:
 	if session_state.data is not None:
 		session_state.data = guardar_coluna(session_state.data,colunas_keep)
@@ -1405,9 +1405,10 @@ with b2:
 		session_state.data.set_index([indice_data], drop=True, inplace = True)
 
 min_max_scaler = st.sidebar.selectbox("Deseja escalar os dados?", ['N', 'S'])
-if min_max_scaler == 'S' and session_state.data is not None:
-        scaler = MinMaxScaler()
-        session_state.data = scaler.fit_transform(session_state.data)
+if session_state.data is not None:
+	if min_max_scaler == 'S':
+        	scaler = MinMaxScaler()
+        	session_state.data = scaler.fit_transform(session_state.data)
 
 ## bloco de corte por volume por percentual de zeros
 #corte_volume = st.sidebar.slider('Remove Volume_ para percentual de 0 na coluna', 0, 100, 100, step=1)
