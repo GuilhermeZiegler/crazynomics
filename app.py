@@ -1384,11 +1384,12 @@ if st.sidebar.button("Remover Colunas"):
 	if session_state.data is not None:
 		session_state.data = heavycleaning(session_state.data, limpeza_pesada)
 		
-if session_state.data is not None and type(session_state.data) == pd.DataFrame():
-	colunas_keep = st.sidebar.multiselect('Selecione Colunas:', session_state.data.columns)
-	manter_colunas = st.sidebar.button("Manter Colunas")
+if session_state.data is not None and isinstance(session_state.data, pd.DataFrame):
+    colunas_keep = st.sidebar.multiselect('Selecione Colunas:', session_state.data.columns)
+    manter_colunas = st.sidebar.button("Manter Colunas")
+
 if manter_colunas:
-	if session_state.data is not None and type(session_state.data) == pd.DataFrame():
+	if session_state.data is not None and and isinstance(session_state.data, pd.DataFrame):
 		session_state.data = guardar_coluna(session_state.data,colunas_keep)
 b1, b2 = st.columns(2)
 with b1:
