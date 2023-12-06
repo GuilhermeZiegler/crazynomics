@@ -256,7 +256,7 @@ def candlestick_chart(dfs, selected_var):
                     high=dfs[f"High_{var}"],
                     low=dfs[f"Low_{var}"],
                     close=dfs[f"Close_{var}"],
-                    name=column_name
+                    name=var
                 )
 
                 traces.add(trace)
