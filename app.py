@@ -241,25 +241,30 @@ def criar_variaveis(dfs, variaveis_selecionadas):
                         dfs[f'Updown_{sufixo}'] = (dfs[f'Retorno_diario_{sufixo}'] > 0).astype(int)						
     return dfs
 
-def candlestick_chart(dfs, selected_var):
+def candlestick_chart(candles, selected_var):
     suffixes = ['Close_', 'Open_', 'Low_', 'High_']
-    traces = set()
 
+    # Filtrar o DataFrame com base nos column_names criados
+    filtered_candles = candles[selected_var]
+
+    traces = []
+
+    # Criar os traços para cada variável no DataFrame filtrado
     for var in selected_var:
         for suffix in suffixes:
             column_name = f"{suffix}{var}"
 
-            if column_name in dfs.columns:
+            if column_name in filtered_candles.columns:
                 trace = go.Candlestick(
-                    x=dfs.index,
-                    open=dfs[f"Open_{var}"],
-                    high=dfs[f"High_{var}"],
-                    low=dfs[f"Low_{var}"],
-                    close=dfs[f"Close_{var}"],
+                    x=candles.index,
+                    open=filtered_candles[f"Open_{var}"],
+                    high=filtered_candles[f"High_{var}"],
+                    low=filtered_candles[f"Low_{var}"],
+                    close=filtered_candles[f"Close_{var}"],
                     name=var
                 )
 
-                traces.add(trace.to_plotly_json())  # Convertendo para JSON antes de adicionar ao conjunto
+                traces.append(trace)
 
     layout = go.Layout(
         title="Gráfico de Candlestick",
@@ -267,8 +272,9 @@ def candlestick_chart(dfs, selected_var):
         yaxis=dict(title="Preço"),
     )
 
-    fig = go.Figure(data=list(traces), layout=layout)
+    fig = go.Figure(data=traces, layout=layout)
     return fig
+
 
 def make_stationary(df, N_MAX):
     VARVEC_diff = df.copy()
