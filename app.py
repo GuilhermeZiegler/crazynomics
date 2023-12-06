@@ -9,14 +9,11 @@ from datetime import timedelta, datetime, time
 import openpyxl
 from openpyxl import Workbook
 from math import sqrt
-
 ## importação de bibliotecas de plotagem de visualziação de dados
 import seaborn as sns
 import matplotlib.pyplot as plt
 import plotly.express as px
 import plotly.graph_objs as go
-
-
 ## importação de bibliotecas de strings
 import os
 import io
@@ -25,18 +22,14 @@ import warnings
 import copy
 import pyarrow.parquet as pq
 import json
-
 import unidecode
 import re
 import string
 import joblib
 import glob
-
-
 # Tratamentos gerais 
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.impute import SimpleImputer
-
 # Modelos de séries temporais
 import statsmodels.api as sm
 from statsmodels.tsa.statespace.sarimax import SARIMAX
@@ -47,9 +40,6 @@ from statsmodels.tsa.stattools import adfuller
 from statsmodels.tsa.vector_ar.vecm import coint_johansen
 import pmdarima as pm
 from statsmodels.tsa.api import VAR
-
-
-
 # demais modelos
 import optuna
 from category_encoders import JamesSteinEncoder, WOEEncoder, CatBoostEncoder
@@ -58,8 +48,6 @@ from sklearn.linear_model import LogisticRegression
 from lightgbm import LGBMClassifier
 from catboost import CatBoostClassifier
 from xgboost import XGBClassifier
-
-
 # importação de dados
 import yfinance as yf
 
@@ -68,7 +56,6 @@ def get_cached_data():
 cached_data = get_cached_data()
 dfs = pd.DataFrame()
 ## Funções para a monografia
-
 
 # Acha a primeira linha inteira que não contem NA
 def firstrow_notna(df):
@@ -1483,7 +1470,7 @@ if grafico_linhas:
 					# Exiba o gráfico dentro do container
 				st.plotly_chart(fig)
 with g2:
-	candle_var = st.multiselect("Selecione as variáveis:", session_state.data.columns.str.split('_', expand=True))
+	candle_var = st.multiselect("Selecione as variáveis:", session_state.data.columns.str.split('_', expand=False))
 	gerar_candles = st.button("Gerar Candles")
 	if gerar_candles:
 		candlechart =  candlestick_chart(session_state.data, candle_var)
