@@ -1383,8 +1383,8 @@ limpeza_pesada = st.sidebar.multiselect('Remova colunas TIPO_',prefixes)
 if st.sidebar.button("Remover Colunas"):
 	if session_state.data is not None:
 		session_state.data = heavycleaning(session_state.data, limpeza_pesada)
-
-if session_state.data.columns is not None:
+		
+if session_state.data is not None:
 	colunas_keep = st.sidebar.multiselect('Selecione Colunas:', session_state.data.columns)
 	manter_colunas = st.sidebar.button("Manter Colunas")
 if manter_colunas:
