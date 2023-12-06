@@ -1404,7 +1404,7 @@ with b2:
 	if indexar_data:
 		session_state.data.set_index([indice_data], drop=True, inplace = True)
 
-min_max_scaler = st.sidebar.selectbox("Deseja escalar os dados?", ['N', 'S'])
+min_max_scaler = st.sidebar.selectbox("Deseja escalar os dados?", ['N', 'S'], default = 'N')
 if min_max_scaler == 'S':
 	session_state.data = MinMaxScaler(session_state.data)
 else:
