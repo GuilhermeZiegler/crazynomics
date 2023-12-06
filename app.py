@@ -1470,7 +1470,7 @@ if grafico_linhas:
 					# Exiba o gráfico dentro do container
 				st.plotly_chart(fig)
 with g2:
-	candle_var = st.multiselect("Selecione as variáveis:", session_state.data.columns.str.split('_', expand=False))
+	candle_var = st.multiselect("Selecione as variáveis:", session_state.data.columns.str.split('_', expand=True).get_level_values(1).unique())
 	gerar_candles = st.button("Gerar Candles")
 	if gerar_candles:
 		candlechart =  candlestick_chart(session_state.data, candle_var)
