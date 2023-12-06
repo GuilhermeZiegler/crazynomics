@@ -254,47 +254,25 @@ def criar_variaveis(dfs, variaveis_selecionadas):
                         dfs[f'Updown_{sufixo}'] = (dfs[f'Retorno_diario_{sufixo}'] > 0).astype(int)						
     return dfs
 
-def get_candle(dfs, list_of_dictionaries):
-    processed_columns = set()
+def candlestick_chart(dfs, selected_var):
+    suffixes = ['Close_', 'Open_', 'Low_', 'High_']
+    traces = set()
 
-    for col in dfs.columns:
-        if '_' in col:
-            suffix = col.split('_')[-1]
-        else:
-            suffix = col
+    for var in selected_var:
+        for suffix in suffixes:
+            column_name = f"{suffix}{var}"
 
-        for dictionary in list_of_dictionaries:
-            # Verificar se o argumento é iterável
-            if hasattr(dictionary, '__iter__'):
-                if suffix in dictionary:
-                    processed_columns.add(suffix)
-                    break
-            else:
-                # Lida com o caso em que o argumento não é iterável
-                if suffix == dictionary:
-                    processed_columns.add(suffix)
-                    break
-			
-    return list(processed_columns)
+            if column_name in dfs.columns:
+                trace = go.Candlestick(
+                    x=dfs.index,
+                    open=dfs[f"Open_{column_name}"],
+                    high=dfs[f"High_{column_name}"],
+                    low=dfs[f"Low_{column_name}"],
+                    close=dfs[f"Close_{column_name}"],
+                    name=column_name
+                )
 
-def candlestick_chart(dfs, selected_suffixes):
-    traces = []
-    for suffix in selected_suffixes:
-        open_col = f"Open_{suffix}"
-        high_col = f"High_{suffix}"
-        low_col = f"Low_{suffix}"
-        close_col = f"Close_{suffix}"
-
-        trace = go.Candlestick(
-            x=dfs.index,
-            open=dfs[open_col],
-            high=dfs[high_col],
-            low=dfs[low_col],
-            close=dfs[close_col],
-            name=suffix
-        )
-
-        traces.append(trace)
+                traces.add(trace)
 
     layout = go.Layout(
         title="Gráfico de Candlestick",
@@ -302,9 +280,8 @@ def candlestick_chart(dfs, selected_suffixes):
         yaxis=dict(title="Preço"),
     )
 
-    fig = go.Figure(data=traces, layout=layout)
+    fig = go.Figure(data=list(traces), layout=layout)
     return fig
-
 
 def make_stationary(df, N_MAX):
     VARVEC_diff = df.copy()
@@ -1506,13 +1483,10 @@ if grafico_linhas:
 					# Exiba o gráfico dentro do container
 				st.plotly_chart(fig)
 with g2:
+	candle_var = st.multiselect("Selecione as variáveis:", session_state.data.columns.str.split('_', expand=True))
 	gerar_candles = st.button("Gerar Candles")
 	if gerar_candles:
-		candles_tickers = get_candle(session_state.data, [lista_indices, lista_empresas, moedas, lista_commodities])
-		selected_suffixes = st.multiselect("Selecione os sufixos:", candles_tickers)
-		
-	if st.button("Candlestick") and selected_suffixes:
-		candlechart =  candlestick_chart(session_state.data, selected_suffixes)
+		candlechart =  candlestick_chart(session_state.data, candle_var)
 		st.plotly_chart(candlechart)	
 			
 st.subheader('Modelos de Séries Temporais', help="Você poderá verificar estacionariedade das variáveis escolhidas e aplicar SARIMA, VAR e VEC", divider='rainbow')
