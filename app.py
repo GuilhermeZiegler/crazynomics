@@ -1384,7 +1384,7 @@ if st.sidebar.button("Remover Colunas"):
 	if session_state.data is not None:
 		session_state.data = heavycleaning(session_state.data, limpeza_pesada)
 		
-if session_state.data is not None nd type(session_state.data) == pd.DataFrame():
+if session_state.data is not None and type(session_state.data) == pd.DataFrame():
 	colunas_keep = st.sidebar.multiselect('Selecione Colunas:', session_state.data.columns)
 	manter_colunas = st.sidebar.button("Manter Colunas")
 if manter_colunas:
@@ -1407,9 +1407,10 @@ with b2:
 min_max_scaler = st.sidebar.selectbox("Deseja escalar os dados?", ['N', 'S'])
 
 if session_state.data is not None and min_max_scaler == 'S':
-    x = session_state.data.values
+    x = session_state.data.values  # Assuming session_state.data is a DataFrame
     scaler = MinMaxScaler()
-    session_state.data = scaler.fit_transform(x)
+    scaled_data = scaler.fit_transform(x)
+    session_state.data = pd.DataFrame(data=scaled_data, columns=session_state.data.columns)
 
 ## bloco de corte por volume por percentual de zeros
 #corte_volume = st.sidebar.slider('Remove Volume_ para percentual de 0 na coluna', 0, 100, 100, step=1)
