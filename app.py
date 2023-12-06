@@ -1406,9 +1406,9 @@ with b2:
 
 min_max_scaler = st.sidebar.selectbox("Deseja escalar os dados?", ['N', 'S'], default = 'N')
 if min_max_scaler == 'S':
-	session_state.data = MinMaxScaler(session_state.data)
-else:
-	session_state.data = session_state.data
+    if session_state.data is not None:
+        scaler = MinMaxScaler()
+        session_state.data = scaler.fit_transform(session_state.data)
 
 ## bloco de corte por volume por percentual de zeros
 #corte_volume = st.sidebar.slider('Remove Volume_ para percentual de 0 na coluna', 0, 100, 100, step=1)
