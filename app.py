@@ -241,30 +241,33 @@ def criar_variaveis(dfs, variaveis_selecionadas):
                         dfs[f'Updown_{sufixo}'] = (dfs[f'Retorno_diario_{sufixo}'] > 0).astype(int)						
     return dfs
 
-def candlestick_chart(candles, selected_var):
+import plotly.graph_objects as go
+
+def candlestick_chart(dfs, selected_var):
     suffixes = ['Close_', 'Open_', 'Low_', 'High_']
+    candles = []
 
-    # Filtrar o DataFrame com base nos column_names criados
-    filtered_candles = candles[selected_var]
-
-    traces = []
-
-    # Criar os traços para cada variável no DataFrame filtrado
+    # Criar todos os sufixos
     for var in selected_var:
         for suffix in suffixes:
             column_name = f"{suffix}{var}"
+            candles.append(column_name)
 
-            if column_name in filtered_candles.columns:
-                trace = go.Candlestick(
-                    x=candles.index,
-                    open=filtered_candles[f"Open_{var}"],
-                    high=filtered_candles[f"High_{var}"],
-                    low=filtered_candles[f"Low_{var}"],
-                    close=filtered_candles[f"Close_{var}"],
-                    name=var
-                )
+    # Filtrar o DataFrame com base nos column_names criados
+    dfs = dfs[candles]
+    traces = []
 
-                traces.append(trace)
+    for var in selected_var:
+        trace = go.Candlestick(
+            x=dfs.index,
+            open=dfs[f"Open_{var}"],
+            high=dfs[f"High_{var}"],
+            low=dfs[f"Low_{var}"],
+            close=dfs[f"Close_{var}"],
+            name=var
+        )
+
+        traces.append(trace)
 
     layout = go.Layout(
         title="Gráfico de Candlestick",
@@ -274,6 +277,7 @@ def candlestick_chart(candles, selected_var):
 
     fig = go.Figure(data=traces, layout=layout)
     return fig
+
 
 
 def make_stationary(df, N_MAX):
