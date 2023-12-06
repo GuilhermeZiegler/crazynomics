@@ -252,10 +252,10 @@ def candlestick_chart(dfs, selected_var):
             if column_name in dfs.columns:
                 trace = go.Candlestick(
                     x=dfs.index,
-                    open=dfs[f"Open_{column_name}"],
-                    high=dfs[f"High_{column_name}"],
-                    low=dfs[f"Low_{column_name}"],
-                    close=dfs[f"Close_{column_name}"],
+                    open=dfs[f"Open_{var}"],
+                    high=dfs[f"High_{var}"],
+                    low=dfs[f"Low_{var}"],
+                    close=dfs[f"Close_{var}"],
                     name=column_name
                 )
 
