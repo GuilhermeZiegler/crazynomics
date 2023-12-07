@@ -1392,18 +1392,18 @@ if session_state.data is not None and isinstance(session_state.data, pd.DataFram
 
 b1, b2 = st.columns(2)
 with b1:
-	if st.button("Filtrar Dados"):
-	    session_state.data = read_parquet_file()
-	    session_state.data = filtra_dados(session_state.data, merged_df, start_date, end_date)
-	else:
-	    st.warning('Para carregar do excel: clique no botão carregar excel. É preciso trabalhar com um df indexado ou indexar a coluna de data!')
+    if st.button("Filtrar Dados"):
+        session_state.data = read_parquet_file()
+        session_state.data = filtra_dados(session_state.data, merged_df, start_date, end_date)
+    else:
+        st.warning('Para carregar do excel: clique no botão carregar excel. É preciso trabalhar com um df indexado ou indexar a coluna de data!')
 with b2:
-	if session_state.data is not None:
-	    colunasdata =  ["None"] + list(session_state.data.columns)
-	    indexar_data = st.button("Aplicar indice de data")
-	    indice_data = st.selectbox("Selecione a coluna de data:", colunasdata)
-	    if indexar_data:
-		session_state.data.set_index([indice_data], drop=True, inplace = True)
+    if session_state.data is not None:
+        colunasdata = ["None"] + list(session_state.data.columns)
+        indexar_data = st.button("Aplicar indice de data")
+        indice_data = st.selectbox("Selecione a coluna de data:", colunasdata)
+        if indexar_data:
+            session_state.data.set_index([indice_data], drop=True, inplace=True)
 
 min_max_scaler = st.sidebar.selectbox("Deseja escalar os dados?", ['N', 'S'])
 
