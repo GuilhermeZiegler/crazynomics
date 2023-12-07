@@ -1524,29 +1524,30 @@ with p2:
 
 			
 st.subheader('Verificador de  Coinregração', help="Testar Cointegração: Verifica cointegração por janela de tempo. Encontrar Coint: descobre quais combinações de ativos estão cointegradas para um intervalo de tempo e um tamanho ótimo. ATENÇÃO: Dados precisam estar com o index de data. Caso venha do filtro, automaticamente estarão neste formto.", divider='rainbow')	
-	
-co1, co2 = st.columns(2)	
+
+co1, co2 = st.columns(2)
+
 with co1:
-	nc = st.selectbox("Níveis críticos:",["5%","10%", "1%"])
-	freqs_ = list(offset_mapping.keys())
-	freq_ = st.selectbox("Freq Coint", freqs_)
-	window_size_ = st.number_input('Coint Window Size:',1, 1000, 1,step=1) 
-	approach_ =  st.radio("Coint opção:", ["constant", "forward", "back"])
-	if session_state is not None:
-		variavel_y = st.selectbox('Variável Y:', session_state.data.columns)
-	else:
-		variavel_y = st.selectbox('Variável Y:', "Carrega a/sua base")
-	variaveis_coint = st.multiselect('Variáveis Cointegrantes:',session_state.data.columns)
-	det_order = st.number_input('-1 Auto, 0 None, 1 linear, 2 Square',-1,2, -1,step=1)
-	k_ar_diff = st.number_input("Número de diferenciações", 0, 10, 0, step=1)
-	cointegrar = st.button('Testar Cointegração')
-	if cointegrar:
-		if session_state.data is not None:
-			cointegracao = coint_window(session_state.data, freq_, window_size_, approach_, variavel_y, variaveis_coint,det_order , k_ar_diff, nc)
-			st.write(cointegracao) 
+    nc = st.selectbox("Níveis críticos:", ["5%", "10%", "1%"])
+    freqs_ = list(offset_mapping.keys())
+    freq_ = st.selectbox("Freq Coint", freqs_)
+    window_size_ = st.number_input('Coint Window Size:', 1, 1000, 1, step=1)
+    approach_ = st.radio("Coint opção:", ["constant", "forward", "back"])
 
-st.subheader('Modelos Temporais', help="ARIMA, SARIMA, VAR e VEC", divider='rainbow')				
+    if session_state is not None:
+        variavel_y = st.selectbox('Variável Y:', session_state.data.columns)
+    else:
+        variavel_y = st.selectbox('Variável Y:', "Carrega a/sua base")
 
+    variaveis_coint = st.multiselect('Variáveis Cointegrantes:', session_state.data.columns)
+    det_order = st.number_input('-1 Auto, 0 None, 1 linear, 2 Square', -1, 2, -1, step=1)
+    k_ar_diff = st.number_input("Número de diferenciações", 0, 10, 0, step=1)
+    cointegrar = st.button('Testar Cointegração')
+    if cointegrar and session_state.data is not None:
+	cointegracao = coint_window(session_state.data, freq_, window_size_, approach_, variavel_y, variaveis_coint,det_order , k_ar_diff, nc)
+	st.write(cointegracao) 
+
+st.markdown('##Modelos Temporais', help="ARIMA, SARIMA, VAR e VEC", divider='rainbow')				
 st.subheader("Auto Arima", help ="Utiliza a função padrão autoarima para gerar um modelo. Baseado em AIC. Considera diferenciação quando d >= 1. Para usar um modelo com diferenciação aplique a função de diferenciação do dataframe. Você pode configurar a frequência do seu dataframe com as funções auxiliares")	
 
 columns_list = [col for col in session_state.data.columns if col != 'Date']
