@@ -1478,17 +1478,16 @@ g1, g2 = st.columns(2)
 with g1:
 	grafico_linhas = st.button("Gráfico Linhas")
 	selected_columns = st.multiselect("Gráfico:", session_state.data.columns)
-	
-if grafico_linhas:
-	if session_state.data is not None:
-		if not selected_columns:
-			st.warning("Selecione alguma coluna")
-		else:
+	if grafico_linhas:
+		if session_state.data is not None:
+			if not selected_columns:
+				st.warning("Selecione alguma coluna")
+			else:
 				# Crie o gráfico usando Plotly Express
-			fig = px.line(session_state.data, x=session_state.data.index, y=selected_columns)
-			with st.container():
+				fig = px.line(session_state.data, x=session_state.data.index, y=selected_columns)
+				with st.container():
 					# Exiba o gráfico dentro do container
-				st.plotly_chart(fig)
+					st.plotly_chart(fig)
 with g2:
 	candle_var = st.multiselect("Selecione as variáveis:", session_state.data.columns.str.split('_', expand=True).get_level_values(1).unique())
 	gerar_candles = st.button("Gerar Candles")
