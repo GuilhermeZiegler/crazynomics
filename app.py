@@ -1546,7 +1546,7 @@ with co1:
         cointegracao = coint_window(session_state.data, freq_, window_size_, approach_, variavel_y, variaveis_coint, det_order, k_ar_diff, nc)
         st.write(cointegracao)
 	    
-st.markdown('##Modelos Temporais')				
+st.markdown("## Modelos Temporais")				
 st.subheader("Auto Arima", help ="Utiliza a função padrão autoarima para gerar um modelo. Baseado em AIC. Considera diferenciação quando d >= 1. Para usar um modelo com diferenciação aplique a função de diferenciação do dataframe. Você pode configurar a frequência do seu dataframe com as funções auxiliares")	
 
 columns_list = [col for col in session_state.data.columns if col != 'Date']
@@ -1575,19 +1575,19 @@ if autoarima:
 
 st.subheader("SARIMALL", help ="Você pode configurar os parâmetros individualmente ou deixar que o otimizador encontre o melhor modelo de acordo com um limite de variação dos parâmetros. Quando os parametros forem -1, significa que seguem o default None e a função usará análise combinatória para achar o melhor modelo. Certifique-se de garantir que você tem capacidade para processar a função. Se os parâmetros forem considerados, a função SARIMALL funciona como um SARIMA personalizado. Max_lags é o único parametro cujo default é variar até 12. Os demais variam até 3, para limitar o estouro de combinações. ATENÇÃO: TEMPO ESTIMADO É DE 5 SEGUNDOS POR MODELO. TEMPO MÉDIO MIL MODELOS É DE 13,8 HORAS ")	
 
-st.markdown("Selecione os parametros para o otimizador")
+st.markdown("## Selecione os parametros para o otimizador")
 
 s1, s2, s3= st.columns(3)
 
 with s1:
-	st.markdown("Configurações")
+	st.markdown("## Configurações")
 	variavel2 = st.selectbox("Selecione", columns_list)
 	cut2 = st.number_input("Proporção de teste", 0.0,1.0, 0.25,step=0.01)
 	metric = st.selectbox("Otimizar por:", ['rmse', 'mse', 'mae','mape','aic', 'bic'])
 	n_plots = st.number_input("Quantidade de Plots otimizados",1,10,3,step=1)
 	sarimall = st.button("SARIMALL")
 with s2:
-	st.markdown("Parâmetros") 
+	st.markdown("## Parâmetros") 
 	p =st.number_input("p", -1,10,-1,step=1)
 	d2 = st.number_input("d", -1,10,-1,step=1)
 	q =st.number_input("q", -1,10,-1,step=1)
@@ -1595,7 +1595,7 @@ with s2:
 	stationarity = st.selectbox("Forçar estacionariedade?", [True,False])
 	
 with s3:
-	st.markdown("Parâmetros Sazonais") 					
+	st.markdown(" ## Parâmetros Sazonais") 					
 	P =st.number_input("P", -1,10,-1,step=1)
 	D =st.number_input("D", -1,10,-1,step=1)
 	Q =st.number_input("Q",-1,10,-1,step=1)
