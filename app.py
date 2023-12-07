@@ -1534,7 +1534,8 @@ with co1:
 	approach_ =  st.radio("Coint opção:", ["constant", "forward", "back"])
 	if session_state is not None:
 		variavel_y = st.selectbox('Variável Y:', session_state.data.columns)
-	
+	else:
+		variavel_y = st.selectbox('Variável Y:', "Carrega a/sua base")
 	variaveis_coint = st.multiselect('Variáveis Cointegrantes:',session_state.data.columns)
 	det_order = st.number_input('-1 Auto, 0 None, 1 linear, 2 Square',-1,2, -1,step=1)
 	k_ar_diff = st.number_input("Número de diferenciações", 0, 10, 0, step=1)
