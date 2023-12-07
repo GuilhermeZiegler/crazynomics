@@ -704,7 +704,82 @@ def grangercausalitytests_trintinalia(df, y_column, max_lags, n, nc=0.05, x_colu
 
     return session_state.data 
 
-def AUTOVAR(df, vardiff, cut, max_lags, var_y, x_columns):
+
+def AUTOVAR(df, vardiff, cut, max_lags, var_y, x_columns, top_n_models=10):
+    variables = [var_y] + x_columns
+    
+    # Geração de combos melhorada
+    df_combo = []
+    for r in range(2, len(variables) + 1):  # Começa com r=2 para evitar combinações redundantes
+        combos = combinations(variables, r)
+        df_combo.extend(combos)
+    
+    st.write(f"Foram gerados {len(df_combo)} conjuntos para o modelo VAR")
+    
+    model_colnames_list = []
+    lags_list = []
+    rmse_list = []
+    posicao_combinacao_list = []
+    train_dfs = []
+    predicted_dfs = []
+    
+    for posicao, df_combinacao in enumerate(df_combo):
+        if all(col in df.columns for col in df_combinacao):
+            VARn_combinacao = df[list(df_combinacao)]
+            
+            rmse_dict = {}
+            
+            for k in range(1, max_lags + 1):
+                train_df = VARn_combinacao.iloc[:-1, :]  # Exclui a última linha para usar como teste
+                test_df = VARn_combinacao.iloc[-1:, :]
+                model = VAR(train_df)
+                fitted_model = model.fit(maxlags=k)
+                
+                n_forecast = len(test_df)
+                forecast = fitted_model.forecast(y=train_df.values, steps=n_forecast)
+                
+                predicted_df = pd.DataFrame(forecast, columns=train_df.columns, index=test_df.index)
+                rmse = sqrt(mean_squared_error(test_df[var_y], predicted_df[var_y]))
+                
+                rmse_dict[k] = rmse
+        
+            lag_otimo = min(rmse_dict, key=rmse_dict.get)
+            modelo_name = f"Modelo_lag{lag_otimo}"
+            concatenated_colnames = " ".join(train_df.columns)
+            
+            model_colnames_list.append(concatenated_colnames)
+            lags_list.append(lag_otimo)
+            rmse_list.append(rmse_dict[lag_otimo])
+            posicao_combinacao_list.append(posicao)
+            train_dfs.append(train_df)
+            predicted_dfs.append(predicted_df)
+    
+    df_resultante = pd.DataFrame({
+        'model_colnames': model_colnames_list,
+        'Lags': lags_list,
+        'RMSE': rmse_list,
+        'posicao_da_combinacao': posicao_combinacao_list})
+    df_resultante = df_resultante.sort_values(by="RMSE").head(top_n_models)
+    
+    st.dataframe(df_resultante)
+
+    # Plotar os gráficos dos 10 melhores modelos
+    for i in range(min(top_n_models, len(df_resultante))):
+        posicao = df_resultante.iloc[i]['posicao_da_combinacao']
+        train_df = train_dfs[posicao]
+        test_df = predicted_dfs[posicao]
+
+        # Adicione o nome da variável dependente à legenda
+        var_dependente = df_resultante.iloc[i]['model_colnames'].split()[-1]
+        
+        # Plotar todas as previsões no mesmo gráfico com Plotly Express
+        fig = px.line()
+        fig.add_scatter(x=train_df.index, y=train_df[var_dependente], mode='lines', name='Treinamento')
+        fig.add_scatter(x=test_df.index, y=test_df[var_dependente], mode='lines', name='Teste')
+
+        st.plotly_chart(fig)
+
+def AUTOVAR2(df, vardiff, cut, max_lags, var_y, x_columns):
     variables = [var_y] + x_columns 
     df_combo = []
     for _ in range(vardiff):
