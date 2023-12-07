@@ -1546,7 +1546,7 @@ with co1:
         cointegracao = coint_window(session_state.data, freq_, window_size_, approach_, variavel_y, variaveis_coint, det_order, k_ar_diff, nc)
         st.write(cointegracao)
 	    
-st.markdown('##Modelos Temporais', help="ARIMA, SARIMA, VAR e VEC", divider='rainbow')				
+st.markdown('##Modelos Temporais')				
 st.subheader("Auto Arima", help ="Utiliza a função padrão autoarima para gerar um modelo. Baseado em AIC. Considera diferenciação quando d >= 1. Para usar um modelo com diferenciação aplique a função de diferenciação do dataframe. Você pode configurar a frequência do seu dataframe com as funções auxiliares")	
 
 columns_list = [col for col in session_state.data.columns if col != 'Date']
