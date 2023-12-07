@@ -1411,7 +1411,7 @@ if session_state.data is not None and min_max_scaler == 'S':
     x = session_state.data.values  # Assuming session_state.data is a DataFrame
     scaler = MinMaxScaler()
     scaled_data = scaler.fit_transform(x)
-    session_state.data = pd.DataFrame(data=scaled_data, columns=session_state.data.columns)
+    session_state.data = pd.DataFrame(data=scaled_data, index = session_state.data.index, columns=session_state.data.columns)
 
 ## bloco de corte por volume por percentual de zeros
 #corte_volume = st.sidebar.slider('Remove Volume_ para percentual de 0 na coluna', 0, 100, 100, step=1)
