@@ -1473,9 +1473,9 @@ if baixar_excel:
 
 st.subheader('Visualização Gráfica', help="Selecione um filtro de dados e clique na visualização gráfica disponível", divider='rainbow')
 
-g1, g2 = st.columns(2)
-	     	     
+
 if session_state.data is not None:
+    g1, g2 = st.columns(2)
     with g1:
         grafico_linhas = st.button("Gráfico Linhas")
         selected_columns = st.multiselect("Gráfico:", session_state.data.columns)
@@ -1486,7 +1486,6 @@ if session_state.data is not None:
                 fig = px.line(session_state.data, x=session_state.data.index, y=selected_columns)
                 with st.container():
                     st.plotly_chart(fig)
-    
     with g2:
         candle_var = st.multiselect("Selecione as variáveis:", session_state.data.columns.str.split('_', expand=True).get_level_values(1).unique())
         gerar_candles = st.button("Gerar Candles")
