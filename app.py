@@ -1399,11 +1399,11 @@ with b1:
 	    st.warning('Para carregar do excel: clique no botão carregar excel. É preciso trabalhar com um df indexado ou indexar a coluna de data!')
 with b2:
 	if session_state.data is not None:
-		colunasdata =  ["None"] + list(session_state.data.columns)
-		indexar_data = st.button("Aplicar indice de data")
-		indice_data = st.selectbox("Selecione a coluna de data:", colunasdata)
-		if indexar_data:
-			session_state.data.set_index([indice_data], drop=True, inplace = True)
+	    colunasdata =  ["None"] + list(session_state.data.columns)
+	    indexar_data = st.button("Aplicar indice de data")
+	    indice_data = st.selectbox("Selecione a coluna de data:", colunasdata)
+	    if indexar_data:
+		session_state.data.set_index([indice_data], drop=True, inplace = True)
 
 min_max_scaler = st.sidebar.selectbox("Deseja escalar os dados?", ['N', 'S'])
 
