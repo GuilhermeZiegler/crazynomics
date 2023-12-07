@@ -712,6 +712,8 @@ def AUTOVAR(df, vardiff, cut, max_lags, var_y, x_columns, top_n_models=100):
     for r in range(2, len(variables) + 1):  # Começa com r=2 para evitar combinações redundantes
         combos = combinations(variables, r)
         df_combo.extend(combos)
+	st.dataframe(df_combo)
+	st.dataframe(df_combo.extend(combos))
 
     st.write(f"Foram gerados {len(df_combo)} conjuntos para o modelo VAR")
 
@@ -725,10 +727,10 @@ def AUTOVAR(df, vardiff, cut, max_lags, var_y, x_columns, top_n_models=100):
 
     for posicao, df_combinacao in enumerate(df_combo):
         if all(col in df.columns for col in df_combinacao):
+	    st.dataframe(df_combinacao)
             VARn_combinacao = df[df_combinacao]
-            train_df = VARn_combinacao.iloc[:cut_index, :]
-            test_df = VARn_combinacao.iloc[cut_index:, :]
-
+            train_df = VARn_combinacao.iloc[:cut_index]
+            test_df = VARn_combinacao.iloc[cut_index:]
             for k in range(1, max_lags + 1):
                 model = VAR(train_df)
                 fitted_model = model.fit(maxlags=k)
