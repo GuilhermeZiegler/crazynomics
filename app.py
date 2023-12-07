@@ -1631,7 +1631,7 @@ top_n_models =  st.number_input("Numero de plots ótimos:", 1, 20, 10, step=1)
 autovar = st.button("AutoVAR")
 if autovar:
     if session_state.data is not None:
-        AUTOVAR(session_state.data,vardiff,varcut,var_lags, varY, varX)
+        AUTOVAR(session_state.data,vardiff,varcut,var_lags, varY, varX,top_n_models)
 
 st.subheader('Betas', help="Calcula e plota Betas entre ativos selecionados", divider='rainbow')			
 
