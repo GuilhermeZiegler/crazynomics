@@ -1475,8 +1475,8 @@ st.subheader('Visualização Gráfica', help="Selecione um filtro de dados e cli
 
 g1, g2 = st.columns(2)
 	     	     
-with g1:
-    if session_state.data is not None:
+if session_state.data is not None:
+    with g1:
         grafico_linhas = st.button("Gráfico Linhas")
         selected_columns = st.multiselect("Gráfico:", session_state.data.columns)
         if grafico_linhas:
@@ -1485,14 +1485,14 @@ with g1:
             else:
                 fig = px.line(session_state.data, x=session_state.data.index, y=selected_columns)
                 with st.container():
-                    # Exiba o gráfico dentro do container
                     st.plotly_chart(fig)
-with g2:
-    candle_var = st.multiselect("Selecione as variáveis:", session_state.data.columns.str.split('_', expand=True).get_level_values(1).unique())
-    gerar_candles = st.button("Gerar Candles")
-    if gerar_candles:
-        candlechart = candlestick_chart(session_state.data, candle_var)
-        st.plotly_chart(candlechart)
+    
+    with g2:
+        candle_var = st.multiselect("Selecione as variáveis:", session_state.data.columns.str.split('_', expand=True).get_level_values(1).unique())
+        gerar_candles = st.button("Gerar Candles")
+        if gerar_candles:
+            candlechart = candlestick_chart(session_state.data, candle_var)
+            st.plotly_chart(candlechart)
 
 			
 st.subheader('Modelos de Séries Temporais', help="Você poderá verificar estacionariedade das variáveis escolhidas e aplicar SARIMA, VAR e VEC", divider='rainbow')
