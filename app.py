@@ -1516,13 +1516,11 @@ with p2:
 	window_size = st.number_input('Window Size:',1, 1000, 1,step=1) 
 	approach =  st.radio("Selecione uma opção:", ["constant", "forward", "back"])
 	stationary_window = st.button("Stationary window")
-	if stationary_window:
-		if session_state.data is not None:
-			results = stationary_window_adf_multi_columns(session_state.data, window_size,approach,offset_type=freq)
-			for column_name, result_df in results.items():
-				st.write(result_df)
+	if stationary_window and session_state.data is not None:
+		results = stationary_window_adf_multi_columns(session_state.data, window_size,approach,offset_type=freq)
+		for column_name, result_df in results.items():
+			st.write(result_df)
 
-			
 st.subheader('Verificador de  Coinregração', help="Testar Cointegração: Verifica cointegração por janela de tempo. Encontrar Coint: descobre quais combinações de ativos estão cointegradas para um intervalo de tempo e um tamanho ótimo. ATENÇÃO: Dados precisam estar com o index de data. Caso venha do filtro, automaticamente estarão neste formto.", divider='rainbow')	
 
 co1, co2 = st.columns(2)
@@ -1537,16 +1535,17 @@ with co1:
     if session_state is not None:
         variavel_y = st.selectbox('Variável Y:', session_state.data.columns)
     else:
-        variavel_y = st.selectbox('Variável Y:', "Carrega a/sua base")
+        variavel_y = st.selectbox('Variável Y:', "Carregue a/sua base")
 
     variaveis_coint = st.multiselect('Variáveis Cointegrantes:', session_state.data.columns)
     det_order = st.number_input('-1 Auto, 0 None, 1 linear, 2 Square', -1, 2, -1, step=1)
     k_ar_diff = st.number_input("Número de diferenciações", 0, 10, 0, step=1)
     cointegrar = st.button('Testar Cointegração')
-    if cointegrar and session_state.data is not None:
-	cointegracao = coint_window(session_state.data, freq_, window_size_, approach_, variavel_y, variaveis_coint,det_order , k_ar_diff, nc)
-	st.write(cointegracao) 
 
+    if cointegrar and session_state.data is not None:
+        cointegracao = coint_window(session_state.data, freq_, window_size_, approach_, variavel_y, variaveis_coint, det_order, k_ar_diff, nc)
+        st.write(cointegracao)
+	    
 st.markdown('##Modelos Temporais', help="ARIMA, SARIMA, VAR e VEC", divider='rainbow')				
 st.subheader("Auto Arima", help ="Utiliza a função padrão autoarima para gerar um modelo. Baseado em AIC. Considera diferenciação quando d >= 1. Para usar um modelo com diferenciação aplique a função de diferenciação do dataframe. Você pode configurar a frequência do seu dataframe com as funções auxiliares")	
 
