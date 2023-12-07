@@ -707,14 +707,13 @@ def grangercausalitytests_trintinalia(df, y_column, max_lags, n, nc=0.05, x_colu
 def AUTOVAR(df, vardiff, cut, max_lags, var_y, x_columns, top_n_models=100):
     variables = [var_y] + x_columns
     st.write(variables)
-	
+    
     df_combo = []
     for r in range(2, len(variables) + 1):  # Começa com r=2 para evitar combinações redundantes
         combos = itertools.combinations(variables, r)
         df_combo.extend(combos)
     
     st.dataframe(df_combo)
-
     st.write(f"Foram gerados {len(df_combo)} conjuntos para o modelo VAR")
 
     model_colnames_list = []
@@ -727,7 +726,7 @@ def AUTOVAR(df, vardiff, cut, max_lags, var_y, x_columns, top_n_models=100):
 
     for posicao, df_combinacao in enumerate(df_combo):
         if all(col in df.columns for col in df_combinacao):
-	    st.dataframe(df_combinacao)
+            st.dataframe(df_combinacao)
             VARn_combinacao = df[df_combinacao]
             train_df = VARn_combinacao.iloc[:cut_index]
             test_df = VARn_combinacao.iloc[cut_index:]
@@ -755,10 +754,10 @@ def AUTOVAR(df, vardiff, cut, max_lags, var_y, x_columns, top_n_models=100):
         'Lags': lags_list,
         'RMSE': rmse_list,
         'posicao_da_combinacao': posicao_combinacao_list})
-    
+
     df_resultante = df_resultante.sort_values(by="RMSE").head(top_n_models)
     st.dataframe(df_resultante)
-    
+
     for i in range(min(top_n_models, len(df_resultante))):
         posicao = df_resultante.iloc[i]['posicao_da_combinacao']
         train_df = train_dfs[posicao]
