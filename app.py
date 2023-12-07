@@ -727,9 +727,8 @@ def AUTOVAR(df, vardiff, cut, max_lags, var_y, x_columns, top_n_models=10):
     for posicao, df_combinacao in enumerate(df_combo):
     	if all(col in df.columns for col in df_combinacao):
         	VARn_combinacao = df[df_combinacao]
-        
-	train_df = VARn_combinacao.iloc[:cut_index, :]  
-        test_df = VARn_combinacao.iloc[cut_index:, :]  
+		train_df = VARn_combinacao.iloc[:cut_index, :]
+		test_df = VARn_combinacao.iloc[cut_index:, :]  
 	for k in range(1, max_lags + 1):	
                 model = VAR(train_df)
                 fitted_model = model.fit(maxlags=k)
@@ -738,16 +737,15 @@ def AUTOVAR(df, vardiff, cut, max_lags, var_y, x_columns, top_n_models=10):
                 predicted_df = pd.DataFrame(forecast, columns=train_df.columns, index=test_df.index)
                 rmse = sqrt(mean_squared_error(test_df[var_y], predicted_df[var_y]))
                 rmse_dict[k] = rmse
-        
-            lag_otimo = min(rmse_dict, key=rmse_dict.get)
-            modelo_name = f"Modelo_lag{lag_otimo}"
-            concatenated_colnames = " ".join(train_df.columns)    
-            model_colnames_list.append(concatenated_colnames)
-            lags_list.append(lag_otimo)
-            rmse_list.append(rmse_dict[lag_otimo])
-            posicao_combinacao_list.append(posicao)
-            train_dfs.append(train_df)
-            predicted_dfs.append(predicted_df)    
+        lag_otimo = min(rmse_dict, key=rmse_dict.get)
+        modelo_name = f"Modelo_lag{lag_otimo}"
+        concatenated_colnames = " ".join(train_df.columns)    
+        model_colnames_list.append(concatenated_colnames)
+        lags_list.append(lag_otimo)
+        rmse_list.append(rmse_dict[lag_otimo])
+        posicao_combinacao_list.append(posicao)
+        train_dfs.append(train_df)
+        predicted_dfs.append(predicted_df)    
     df_resultante = pd.DataFrame({
         'model_colnames': model_colnames_list,
         'Lags': lags_list,
