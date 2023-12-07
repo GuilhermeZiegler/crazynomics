@@ -710,12 +710,12 @@ def AUTOVAR(df, vardiff, cut, max_lags, var_y, x_columns):
     for _ in range(vardiff):
         df = df.diff()
         df.dropna(inplace=True)
-    for r in range(1, len(variables) + 1):
+	    
+    for r in range(2, len(variables) + 1):
         combos = combinations(variables, r)
-        for combo in combos:
-            if combo[0] == var_y and len(combo) > 1:
-                df_combo.append(combo)  # Remova list() aqui
+        df_combo.extend(combos)	
     st.write(f"Foram gerados {len(df_combo)} conjuntos para o modelo VAR")
+    
     model_colnames_list = []
     lags_list = []
     rmse_list = []
