@@ -1532,7 +1532,9 @@ with co1:
 	freq_ = st.selectbox("Freq Coint", freqs_)
 	window_size_ = st.number_input('Coint Window Size:',1, 1000, 1,step=1) 
 	approach_ =  st.radio("Coint opção:", ["constant", "forward", "back"])
-	variavel_y = st.selectbox('Variável Y:', session_state.data.columns)
+	if session_state is not None:
+		variavel_y = st.selectbox('Variável Y:', session_state.data.columns)
+	
 	variaveis_coint = st.multiselect('Variáveis Cointegrantes:',session_state.data.columns)
 	det_order = st.number_input('-1 Auto, 0 None, 1 linear, 2 Square',-1,2, -1,step=1)
 	k_ar_diff = st.number_input("Número de diferenciações", 0, 10, 0, step=1)
