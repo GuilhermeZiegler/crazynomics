@@ -706,14 +706,14 @@ def grangercausalitytests_trintinalia(df, y_column, max_lags, n, nc=0.05, x_colu
 
 def AUTOVAR(df, vardiff, cut, max_lags, var_y, x_columns, top_n_models=100):
     variables = [var_y] + x_columns
-
-    # Geração de combos melhorada
+    st.write(variables)
+	
     df_combo = []
     for r in range(2, len(variables) + 1):  # Começa com r=2 para evitar combinações redundantes
-        combos = combinations(variables, r)
+        combos = itertools.combinations(variables, r)
         df_combo.extend(combos)
-	st.dataframe(df_combo)
-	st.dataframe(df_combo.extend(combos))
+    
+    st.dataframe(df_combo)
 
     st.write(f"Foram gerados {len(df_combo)} conjuntos para o modelo VAR")
 
@@ -1634,9 +1634,8 @@ varcut = st.number_input("split treinamento e teste:", 0.0, 1.0, 0.25, step=0.01
 var_lags = st.number_input("Var Lags:", 1, 100, 6, step=1)
 top_n_models =  st.number_input("Numero de plots ótimos:", 1, 20, 10, step=1)
 autovar = st.button("AutoVAR")
-if autovar:
-    if session_state.data is not None:
-        AUTOVAR(session_state.data,vardiff,varcut,var_lags, varY, varX,top_n_models)
+if autovar and session_state.data is not None:
+	AUTOVAR(session_state.data,vardiff,varcut,var_lags, varY, varX,top_n_models)
 
 st.subheader('Betas', help="Calcula e plota Betas entre ativos selecionados", divider='rainbow')			
 
