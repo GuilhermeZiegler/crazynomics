@@ -843,13 +843,13 @@ def AUTOVAR2(df, vardiff, cut, max_lags, var_y, x_columns):
     fig.add_scatter(x=train_df.index, y=train_df[var_y], mode='lines', name='Treinamento')
     fig.add_scatter(x=test_df.index, y=test_df[var_y], mode='lines', name='Teste')
 
-    for idx, row in df_resultante.head(10).iterrows():  # Plotar as previsões dos 10 melhores modelos
+    for idx, row in df_resultante.head(top_n_models).iterrows(): 
         lag = row['Lags']
         predicted_df = predicted_dfs[row['posicao_da_combinacao']]
         fig.add_scatter(x=predicted_df.index, y=predicted_df[var_y], mode='lines', name=f'Previsão (Lags={lag})')
 
     fig.update_layout(
-        title="Previsões dos 10 Melhores Modelos",
+        title=f"Previsões dos {top_n_models} Melhores Modelos",
         xaxis_title="Data",
         yaxis_title=var_y,
         showlegend=True,
@@ -1721,7 +1721,6 @@ autovar = st.button("AutoVAR")
 if autovar:
     if session_state.data is not None:
         AUTOVAR(session_state.data,vardiff,varcut,var_lags, varY, varX)
-
 
 st.subheader('Betas', help="Calcula e plota Betas entre ativos selecionados", divider='rainbow')			
 
