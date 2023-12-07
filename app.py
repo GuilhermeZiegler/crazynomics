@@ -705,14 +705,22 @@ def grangercausalitytests_trintinalia(df, y_column, max_lags, n, nc=0.05, x_colu
 
     return session_state.data 
 
+import itertools
+import pandas as pd
+import plotly.express as px
+from statsmodels.tsa.api import VAR
+from sklearn.metrics import mean_squared_error
+from math import sqrt
+import streamlit as st
+
 def AUTOVAR(df, vardiff, cut, max_lags, var_y, x_columns, top_n_models=100):
     variables = [var_y] + x_columns
     st.write(variables)
     
     df_combo = []
     for r in range(1, len(variables) + 1):
-    	combos = itertools.combinations(variables, r)
-    	df_combo.extend(combos)
+        combos = itertools.combinations(variables, r)
+        df_combo.extend(combos)
     
     st.dataframe(df_combo)
     st.write(f"Foram gerados {len(df_combo)} conjuntos para o modelo VAR")
@@ -721,50 +729,55 @@ def AUTOVAR(df, vardiff, cut, max_lags, var_y, x_columns, top_n_models=100):
     lags_list = []
     rmse_list = []
     train_dfs = []
+    test_dfs = []
     predicted_dfs = []
     rmse_dict = {}
 
     for combinacao in df_combo:
-	    	VARn_combinacao = df[combinacao]
-    		VARn_combinacao.dropna(inplace=True)
-    		st.dataframe(df_combinacao)  # Certifique-se de que st.dataframe está sendo usado corretamente
-		train_df = VARn_combinacao.iloc[:cut_index]
-	    	test_df = VARn_combinacao.iloc[cut_index:]
-	    	for k in range(1, max_lags + 1):
-			    model = VAR(train_df)
-			fitted_model = model.fit(maxlags=k)
-		    	n_forecast = len(test_df)
-		    	forecast = fitted_model.forecast(y=train_df.values, steps=n_forecast)
-		    	predicted_df = pd.DataFrame(forecast, columns=train_df.columns, index=test_df.index)
-		    	rmse = sqrt(mean_squared_error(test_df[var_y], predicted_df[var_y]))
-		    	rmse_dict[k] = rmse
-            	lag_otimo = min(rmse_dict, key=rmse_dict.get)
-            	modelo_name = f"Modelo_lag{lag_otimo}"
-            	concatenated_colnames = " ".join(train_df.columns)
-            	model_colnames_list.append(concatenated_colnames)
-            	lags_list.append(lag_otimo)
-            	rmse_list.append(rmse_dict[lag_otimo])
-            	posicao_combinacao_list.append(posicao)
-            	train_dfs.append(train_df)
-            	predicted_dfs.append(predicted_df)
+        VARn_combinacao = df[list(combinacao)]
+        VARn_combinacao.dropna(inplace=True)
+        st.dataframe(VARn_combinacao)  # Certifique-se de que st.dataframe está sendo usado corretamente
+        train_df = VARn_combinacao.iloc[:cut_index]
+        test_df = VARn_combinacao.iloc[cut_index:]
+        for k in range(1, max_lags + 1):
+            model = VAR(train_df)
+            fitted_model = model.fit(maxlags=k)
+            n_forecast = len(test_df)
+            forecast = fitted_model.forecast(y=train_df.values, steps=n_forecast)
+            predicted_df = pd.DataFrame(forecast, columns=train_df.columns, index=test_df.index)
+            rmse = sqrt(mean_squared_error(test_df[var_y], predicted_df[var_y]))
+            rmse_dict[k] = rmse
+            lag_otimo = min(rmse_dict, key=rmse_dict.get)
+            modelo_name = f"Modelo_lag{lag_otimo}"
+            concatenated_colnames = " ".join(train_df.columns)
+            model_colnames_list.append(concatenated_colnames)
+            lags_list.append(lag_otimo)
+            rmse_list.append(rmse_dict[lag_otimo])
+            train_dfs.append(train_df)
+            test_dfs.append(test_df)
+            predicted_dfs.append(predicted_df)
 
     df_resultante = pd.DataFrame({
         'model_colnames': model_colnames_list,
         'Lags': lags_list,
         'RMSE': rmse_list,
-        'posicao_da_combinacao': posicao_combinacao_list})
+        'Train Interval': train_dfs,
+        'Test Interval': test_dfs,
+        'Forecast': predicted_dfs,
+    })
 
     df_resultante = df_resultante.sort_values(by="RMSE").head(top_n_models)
     st.dataframe(df_resultante)
 
     for i in range(min(top_n_models, len(df_resultante))):
-        posicao = df_resultante.iloc[i]['posicao_da_combinacao']
-        train_df = train_dfs[posicao]
-        test_df = predicted_dfs[posicao]
+        train_df = df_resultante.iloc[i]['Train Interval']
+        test_df = df_resultante.iloc[i]['Test Interval']
+        predicted_df = df_resultante.iloc[i]['Forecast']
         var_dependente = df_resultante.iloc[i]['model_colnames'].split()[-1]
         fig = px.line()
         fig.add_scatter(x=train_df.index, y=train_df[var_dependente], mode='lines', name='Treinamento')
         fig.add_scatter(x=test_df.index, y=test_df[var_dependente], mode='lines', name='Teste')
+        fig.add_scatter(x=predicted_df.index, y=predicted_df[var_dependente], mode='lines', name='Previsão')
         st.plotly_chart(fig)
 
 def gerar_betas(df, colunas):
